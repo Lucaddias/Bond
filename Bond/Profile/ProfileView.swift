@@ -39,7 +39,7 @@ struct ProfileView: View {
                     VStack(spacing: 0) {
 
                         // ── Título ──
-                        VStack(spacing: -10) {
+                        VStack(spacing: -20) {
                             Text("Organize")
                                 .font(.app(.porkysRegular, size: 60))
                                 .foregroundColor(.black)
@@ -129,6 +129,7 @@ struct ProfileView: View {
 
                             Image("AboutSection")
                                 .frame(maxWidth: .infinity)
+
                                     if aboutMe.isEmpty {
                                         Text("Tell ur friends a bit about you")
                                             .font(.app(.balooMedium, size: 16))

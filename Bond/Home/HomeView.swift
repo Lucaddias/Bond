@@ -14,9 +14,20 @@ struct HomeView: View {
     @State private var showCreateBond: Bool = false
     @State private var showProfile: Bool = false
 
+    // ── Feed navegação ───────────────────────────────────────────
+    @State private var selectedBondIndex: Int? = nil
+
     // ── Dados do Game Center ─────────────────────────────────────
     @State private var playerName: String  = "Player"
     @State private var playerPhoto: UIImage? = nil
+
+    // ── Limites de tier ──────────────────────────────────────────
+    private var canAddBond: Bool {
+        UserManager.shared.canJoinOrCreateBond(currentCount: bonds.count)
+    }
+    private var existingCodes: Set<String> {
+        Set(bonds.map { $0.inviteCode.uppercased() })
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -60,10 +71,12 @@ struct HomeView: View {
 
                             // Cards de Bond + botão de adicionar
                             VStack(spacing: 16) {
-                                ForEach(bonds) { bond in
-                                    BondCard(bond: bond)
+                                ForEach(bonds.indices, id: \.self) { index in
+                                    BondCard(bond: bonds[index]) {
+                                        selectedBondIndex = index
+                                    }
                                 }
-                                AddBondCard {
+                                AddBondCard(isLocked: !canAddBond) {
                                     showCreateBond = true
                                 }
                             }
@@ -78,12 +91,23 @@ struct HomeView: View {
         }
         .ignoresSafeArea()
         .sheet(isPresented: $showCreateBond) {
-            CreateABondView { newBond in
+            CreateABondView(existingCodes: existingCodes) { newBond in
                 bonds.append(newBond)
             }
         }
         .sheet(isPresented: $showProfile) {
             ProfileView()
+        }
+        // ── Feed do Bond selecionado ─────────────────────────────
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { selectedBondIndex != nil },
+                set: { if !$0 { selectedBondIndex = nil } }
+            )
+        ) {
+            if let idx = selectedBondIndex {
+                FeedView(bond: $bonds[idx])
+            }
         }
         .onAppear { loadGameCenterPlayer() }
     }
@@ -167,11 +191,10 @@ struct HeaderCard: View {
 // ─────────────────────────────────────────────────────────────────
 struct BondCard: View {
     let bond: BondModel
+    var onTap: () -> Void = {}
 
     var body: some View {
-        Button(action: {
-            // Navegar para detalhe do Bond — a implementar
-        }) {
+        Button(action: onTap) {
             ZStack(alignment: .bottomLeading) {
                 Group {
                     if let img = bond.coverImage {
@@ -210,23 +233,39 @@ struct BondCard: View {
 // MARK: - Add Bond Card
 // ─────────────────────────────────────────────────────────────────
 struct AddBondCard: View {
+    var isLocked: Bool = false
     var action: () -> Void = {}
 
     var body: some View {
-        Button(action: action) {
+        Button(action: isLocked ? {} : action) {
             ZStack {
                 RoundedRectangle(cornerRadius: 60)
-                    .fill(Color.white)
-                    .shadow(color: .black.opacity(0.3), radius: 12, x: 5, y: 4)
+                    .fill(isLocked ? Color(red: 0.93, green: 0.93, blue: 0.95) : Color.white)
+                    .shadow(color: .black.opacity(isLocked ? 0.06 : 0.3), radius: 12, x: 5, y: 4)
 
-                Image(systemName: "plus")
-                    .font(.system(size: 36, weight: .medium))
-                    .foregroundColor(.black)
+                if isLocked {
+                    VStack(spacing: 8) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 28, weight: .medium))
+                            .foregroundColor(.black.opacity(0.25))
+                        Text("Bond limit reached")
+                            .font(.app(.balooBold, size: 15))
+                            .foregroundColor(.black.opacity(0.30))
+                        Text("Upgrade to Premium for more")
+                            .font(.app(.balooMedium, size: 12))
+                            .foregroundColor(.black.opacity(0.20))
+                    }
+                } else {
+                    Image(systemName: "plus")
+                        .font(.system(size: 36, weight: .medium))
+                        .foregroundColor(.black)
+                }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 200)
         }
         .buttonStyle(.plain)
+        .disabled(isLocked)
     }
 }
 

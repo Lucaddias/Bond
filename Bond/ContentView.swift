@@ -16,19 +16,32 @@ struct ContentView: View {
         bonds.isEmpty ? .welcome : .home
     }
 
+    // Códigos já em uso (para gerar código único no CreateABondView)
+    private var existingCodes: Set<String> {
+        Set(bonds.map { $0.inviteCode.uppercased() })
+    }
+
+    // Usuário pode criar/entrar em mais um Bond?
+    private var canAddBond: Bool {
+        UserManager.shared.canJoinOrCreateBond(currentCount: bonds.count)
+    }
+
     var body: some View {
         ZStack {
             switch screen {
             case .welcome:
-                WelcomeView(onCreateTeam: {
-                    showCreateBond = true
-                })
+                WelcomeView(
+                    bonds: $bonds,
+                    onCreateTeam: {
+                        if canAddBond { showCreateBond = true }
+                    }
+                )
                 .transition(.asymmetric(
                     insertion: .move(edge: .leading),
                     removal: .move(edge: .leading)
                 ))
                 .sheet(isPresented: $showCreateBond) {
-                    CreateABondView { newBond in
+                    CreateABondView(existingCodes: existingCodes) { newBond in
                         bonds.append(newBond)
                     }
                 }
