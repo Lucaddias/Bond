@@ -140,30 +140,34 @@ struct WelcomeView: View {
         )
     }
 
-    // ── Lógica de join ───────────────────────────────────────────
+    // ── Lógica de join via CloudKit ─────────────────────────────
     private func attemptJoin() {
         let input = code.uppercased()
         guard input.count == 6 else { return }
 
-        // 1. Usuário já está no limite de Bonds?
         guard UserManager.shared.canJoinOrCreateBond(currentCount: bonds.count) else {
             joinError = .limitReached; return
         }
 
-        // 2. Existe um Bond com esse código? (busca local; CloudKit substituirá)
-        guard let idx = bonds.firstIndex(where: { $0.inviteCode.uppercased() == input }) else {
-            joinError = .bondNotFound; return
+        Task {
+            do {
+                let bond = try await CloudKitManager.shared.joinBond(
+                    code: input,
+                    currentBondCount: bonds.count
+                )
+                bonds.append(bond)
+                code = ""
+            } catch let e as CloudKitError {
+                switch e {
+                case .bondNotFound:   joinError = .bondNotFound
+                case .bondFull:       joinError = .bondFull
+                case .alreadyMember:  joinError = .alreadyMember
+                default:              joinError = .bondNotFound
+                }
+            } catch {
+                joinError = .bondNotFound
+            }
         }
-
-        // 3. Usuário já é membro?
-        // (Por ora verificamos se o Bond já está na lista local)
-        // Quando CloudKit estiver integrado, verificaremos BondMembership
-        joinError = .alreadyMember
-        // Quando cloudKit integrado: verificar capacidade e adicionar membro
-        // guard bonds[idx].memberCount < bonds[idx].maxParticipants else {
-        //     joinError = .bondFull; return
-        // }
-        // bonds[idx].memberCount += 1
     }
 }
 

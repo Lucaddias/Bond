@@ -9,19 +9,15 @@ enum AppScreen {
 
 struct ContentView: View {
     @State private var bonds: [BondModel] = []
-    @State private var showCreateBond: Bool = false
+    @State private var showCreateBond = false
+    @State private var ckError: String? = nil
+    @State private var isLoadingBonds = false
 
-    // Tela determinada pela existência de bonds
-    private var screen: AppScreen {
-        bonds.isEmpty ? .welcome : .home
-    }
+    private var screen: AppScreen { bonds.isEmpty ? .welcome : .home }
 
-    // Códigos já em uso (para gerar código único no CreateABondView)
     private var existingCodes: Set<String> {
         Set(bonds.map { $0.inviteCode.uppercased() })
     }
-
-    // Usuário pode criar/entrar em mais um Bond?
     private var canAddBond: Bool {
         UserManager.shared.canJoinOrCreateBond(currentCount: bonds.count)
     }
@@ -41,8 +37,21 @@ struct ContentView: View {
                     removal: .move(edge: .leading)
                 ))
                 .sheet(isPresented: $showCreateBond) {
-                    CreateABondView(existingCodes: existingCodes) { newBond in
-                        bonds.append(newBond)
+                    CreateABondView(existingCodes: existingCodes) { localBond in
+                        // 1. Adiciona imediatamente na UI (optimistic)
+                        bonds.append(localBond)
+                        // 2. Persiste no CloudKit em background
+                        Task {
+                            do {
+                                let saved = try await CloudKitManager.shared.createBond(localBond)
+                                // Substitui o item local pelo salvo (com recordID)
+                                if let idx = bonds.firstIndex(where: { $0.id == localBond.id }) {
+                                    bonds[idx] = saved
+                                }
+                            } catch {
+                                ckError = (error as? CloudKitError)?.errorDescription ?? error.localizedDescription
+                            }
+                        }
                     }
                 }
 
@@ -55,6 +64,26 @@ struct ContentView: View {
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: screen)
+        // Carrega bonds do CloudKit quando o app abre
+        .task {
+            guard CloudKitManager.shared.iCloudAvailable else { return }
+            isLoadingBonds = true
+            defer { isLoadingBonds = false }
+            do {
+                let fetched = try await CloudKitManager.shared.fetchUserBonds()
+                if !fetched.isEmpty { bonds = fetched }
+            } catch {
+                ckError = (error as? CloudKitError)?.errorDescription ?? error.localizedDescription
+            }
+        }
+        .alert("Sync Error", isPresented: Binding(
+            get: { ckError != nil },
+            set: { if !$0 { ckError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(ckError ?? "")
+        }
     }
 }
 

@@ -3,6 +3,7 @@
 
 import SwiftUI
 import UIKit
+import CloudKit
 
 struct BondModel: Identifiable {
     let id: UUID = UUID()
@@ -15,6 +16,9 @@ struct BondModel: Identifiable {
     var posts: [PostModel] = []
 
     // ── Identidade e acesso ──────────────────────────────────────
+    /// ID do registro no CloudKit (nil enquanto apenas local)
+    var recordID: CKRecord.ID? = nil
+
     /// Código de convite gerado na criação (6 chars, A-Z + 0-9, case insensitive)
     var inviteCode: String = ""
 

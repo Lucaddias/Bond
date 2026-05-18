@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Bond precisa acessar sua câmera para tirar fotos e gravar vídeos das suas conquistas.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Bond precisa acessar sua galeria para escolher fotos e vídeos para compartilhar com seu time.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Bond precisa salvar fotos e vídeos na sua galeria.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Bond precisa acessar o microfone para gravar vídeos com áudio.</string>
+</dict>
+</plist>

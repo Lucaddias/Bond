@@ -103,7 +103,15 @@ struct HomeView: View {
             isPresented: Binding(
                 get: { selectedBondIndex != nil },
                 set: { if !$0 { selectedBondIndex = nil } }
-            )
+            ),
+            onDismiss: {
+                // Atualiza lista após sair do feed (ex: usuário saiu do bond)
+                Task {
+                    if let fetched = try? await CloudKitManager.shared.fetchUserBonds() {
+                        bonds = fetched
+                    }
+                }
+            }
         ) {
             if let idx = selectedBondIndex {
                 FeedView(bond: $bonds[idx])

@@ -4,6 +4,7 @@
 import SwiftUI
 import AVKit
 import PhotosUI
+import CloudKit
 
 // ─────────────────────────────────────────────────────────────────
 // MARK: - Feed View
@@ -48,8 +49,21 @@ struct FeedView: View {
                                     .foregroundColor(.black)
                             }
                             .buttonStyle(.plain)
-
                             Spacer()
+                            // ── Botão de teste: sair do bond ──
+                            Button {
+                                Task {
+                                    if let id = bond.recordID {
+                                        try? await CloudKitManager.shared.leaveBond(bondRecordID: id)
+                                    }
+                                    dismiss()
+                                }
+                            } label: {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.red)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, 24)
@@ -60,8 +74,7 @@ struct FeedView: View {
                     ScrollView(showsIndicators: false) {
                         LazyVStack(spacing: 20) {
                             if bond.posts.isEmpty {
-                                emptyState
-                                    .padding(.top, 60)
+                                emptyState.padding(.top, 60)
                             } else {
                                 ForEach(bond.posts.indices, id: \.self) { index in
                                     PostCard(
@@ -75,6 +88,7 @@ struct FeedView: View {
                         .padding(.top, 8)
                         .padding(.bottom, geo.safeAreaInsets.bottom + 100)
                     }
+                    .refreshable { await loadPosts() }
                 }
 
                 // ── Botão câmera — canto inferior direito ────────
@@ -101,6 +115,8 @@ struct FeedView: View {
             }
         }
         .ignoresSafeArea()
+        // Fetch inicial dos posts
+        .task { await loadPosts() }
         // ── Câmera (com acesso à galeria embutido) ───────────────
         .fullScreenCover(isPresented: $showCamera) {
             CameraPickerView(image: $pickedImage, videoURL: $pickedVideoURL)
@@ -117,15 +133,58 @@ struct FeedView: View {
                 image: pickedImage,
                 videoURL: pickedVideoURL
             ) { caption in
-                let post = PostModel(
-                    authorName: "Me",          // substituir pelo nome do player GK
-                    authorPhoto: nil,
-                    image: pickedImage,
-                    videoURL: pickedVideoURL,
-                    caption: caption
-                )
-                bond.posts.insert(post, at: 0)
-                clearPicked()
+                submitPost(caption: caption)
+            }
+        }
+    }
+
+    // ── CloudKit: fetch ──────────────────────────────────────────
+    private func loadPosts() async {
+        guard let recordID = bond.recordID else {
+            // Bond ainda não sincronizado — mantém posts locais
+            return
+        }
+        do {
+            let posts = try await CloudKitManager.shared.fetchPosts(for: recordID)
+            // Marca quais posts o usuário curtiu
+            let likedIDs = try await CloudKitManager.shared.fetchLikedPostIDs()
+            bond.posts = posts.map { post in
+                var p = post
+                if let rid = p.recordID {
+                    p.isLiked = likedIDs.contains(rid.recordName)
+                }
+                return p
+            }
+        } catch {
+            // Falha silenciosa — mantém posts locais/cache
+        }
+    }
+
+    // ── CloudKit: create post ─────────────────────────────────────
+    private func submitPost(caption: String) {
+        let authorName = CloudKitManager.shared.currentPlayerName
+        var localPost  = PostModel(
+            authorName: authorName,
+            image: pickedImage,
+            videoURL: pickedVideoURL,
+            caption: caption
+        )
+        localPost.authorPlayerID = CloudKitManager.shared.currentPlayerID
+
+        // Optimistic insert
+        bond.posts.insert(localPost, at: 0)
+        clearPicked()
+
+        // Persiste no CloudKit se bond já está salvo
+        guard let bondRecordID = bond.recordID else { return }
+        Task {
+            do {
+                let saved = try await CloudKitManager.shared.createPost(localPost, bondRecordID: bondRecordID)
+                if let idx = bond.posts.firstIndex(where: { $0.id == localPost.id }) {
+                    bond.posts[idx] = saved
+                }
+            } catch {
+                // Mantém post local mesmo sem sync
             }
         }
     }
@@ -171,21 +230,18 @@ struct PostCard: View {
 
             // ── Author ──────────────────────────────────────────
             HStack(spacing: 10) {
-                Group {
-                    if let photo = post.authorPhoto {
-                        Image(uiImage: photo)
-                            .frame(width: 44, height: 44)
-                            .clipShape(Circle())
-                    } else {
-                        Circle()
-                            .fill(Color(red: 0.88, green: 0.88, blue: 0.90))
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Image(systemName: "person.fill")
-                                    .foregroundColor(.black.opacity(0.35))
-                            )
-                    }
-                }
+                Circle()
+                    .fill(Color(red: 0.88, green: 0.88, blue: 0.90))
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        Group {
+                            if let photo = post.authorPhoto {
+                                Image(uiImage: photo).frame(width: 44, height: 44).clipShape(Circle())
+                            } else {
+                                Image(systemName: "person.fill").foregroundColor(.black.opacity(0.35))
+                            }
+                        }
+                    )
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(post.authorName)
@@ -195,14 +251,13 @@ struct PostCard: View {
                         .font(.app(.balooMedium, size: 12))
                         .foregroundColor(.black.opacity(0.4))
                 }
-
                 Spacer()
             }
             .padding(.horizontal, 16)
             .padding(.top, 14)
             .padding(.bottom, 12)
 
-            // ── Media ────────────────────────────────────────────
+            // ── Media (local ou download lazy do CloudKit) ───────
             ZStack {
                 if let img = post.image {
                     Image(uiImage: img)
@@ -213,14 +268,26 @@ struct PostCard: View {
                     VideoPlayer(player: p)
                         .frame(height: 260)
                         .onAppear { p.play() }
-                } else {
-                    Rectangle()
-                        .fill(Color(red: 0.92, green: 0.92, blue: 0.94))
-                        .frame(height: 260)
+                } else if post.imageAsset != nil || post.videoAsset != nil {
+                    // Placeholder enquanto faz download
+                    ZStack {
+                        Rectangle()
+                            .fill(Color(red: 0.92, green: 0.92, blue: 0.94))
+                            .frame(height: 260)
+                        ProgressView()
+                    }
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal, 16)
+            // Download lazy do asset do CloudKit
+            .task(id: post.id) {
+                if post.image == nil, let asset = post.imageAsset {
+                    post.image = try? CloudKitManager.shared.downloadImage(from: asset)
+                } else if post.videoURL == nil, let asset = post.videoAsset {
+                    post.videoURL = try? CloudKitManager.shared.downloadVideoURL(from: asset)
+                }
+            }
 
             // ── Caption + Like ───────────────────────────────────
             HStack(alignment: .top, spacing: 12) {
@@ -232,17 +299,25 @@ struct PostCard: View {
 
                 Spacer(minLength: 8)
 
-                // Coração
+                // Coração com sync CloudKit
                 Button {
+                    // Optimistic update
                     post.isLiked.toggle()
                     post.likes = max(0, post.likes + (post.isLiked ? 1 : -1))
+                    // Sync
+                    guard let recordID = post.recordID else { return }
+                    Task {
+                        if let result = try? await CloudKitManager.shared.toggleLike(postRecordID: recordID) {
+                            post.isLiked = result.isLiked
+                            post.likes   = result.count
+                        }
+                    }
                 } label: {
                     VStack(spacing: 3) {
                         Image(systemName: post.isLiked ? "heart.fill" : "heart")
                             .font(.system(size: 24))
                             .foregroundColor(post.isLiked ? Color(red: 0.95, green: 0.25, blue: 0.35) : .black.opacity(0.35))
                             .animation(.spring(response: 0.3, dampingFraction: 0.5), value: post.isLiked)
-
                         if post.likes > 0 {
                             Text("\(post.likes)")
                                 .font(.app(.balooMedium, size: 12))
