@@ -8,6 +8,7 @@ struct WelcomeView: View {
     var onCreateTeam: () -> Void = {}
     @State private var code: String = ""
     @State private var joinError: JoinError? = nil
+    @State private var keyboardHeight: CGFloat = 0
 
     enum JoinError: LocalizedError {
         case bondNotFound
@@ -38,89 +39,93 @@ struct WelcomeView: View {
                     .scaledToFill()
                     .frame(width: w, height: h)
                     .clipped()
-                    .ignoresSafeArea()
 
-                // ── 2. Título centralizado em Porkys ──
-                VStack(alignment: .center, spacing: -42) {
-                    Text("welcome to")
-                        .font(.app(.porkysHeavy, size: 54))
-                        .foregroundStyle(.black)
-                        .kerning(3)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
+                // ── 2. Título + Botões (sobem juntos com o teclado) ──
+                VStack(spacing: 0) {
 
-                    Text("Bond")
-                        .font(.app(.porkysHeavy, size: 115))
-                        .foregroundStyle(.black)
-                        .kerning(0)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
-                    
-                }
-                .padding(.top, 25)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.top, geo.safeAreaInsets.top + 90)
+                    // Título
+                    VStack(alignment: .center, spacing: -42) {
+                        Text("welcome to")
+                            .font(.app(.porkysHeavy, size: 54))
+                            .foregroundStyle(.black)
+                            .kerning(3)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
 
-                // ── 3. Botões dentro do card branco ──
-                VStack(spacing: 10) {
+                        Text("Bond")
+                            .font(.app(.porkysHeavy, size: 115))
+                            .foregroundStyle(.black)
+                            .kerning(0)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
 
-                    // Create Team
-                    Button(action: onCreateTeam) {
+                    Spacer()
+
+                    // Botões
+                    VStack(spacing: 10) {
+
+                        // Enter code
                         ZStack {
-                            Image("Botao_roxo")
+                            Image("Botao_cinza")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 315, height: 100)
 
-                            Text("Create Team")
-                                .font(.app(.balooBold, size: 30))
-                                .foregroundColor(.white)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .frame(height: h * 0.068)
-
-                    // "or"
-                    Text("or")
-                        .font(.app(.balooBold, size: 36))
-                        .foregroundColor(.black.opacity(0.5))
-
-                    // Enter code — campo de texto com fundo cinza
-                    ZStack {
-                        Image("Botao_cinza")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 315, height: 100)
-
-                        TextField("Enter code", text: $code)
-                            .font(.app(.balooBold, size: 26))
-                            .foregroundColor(.black)
-                            .tint(.black)
-                            .multilineTextAlignment(.center)
-                            .keyboardType(.asciiCapable)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                            .submitLabel(.join)
-                            .onSubmit { attemptJoin() }
-                            .onChange(of: code) { _, new in
-                                joinError = nil
-                                let filtered = new.filter { $0.isLetter || $0.isNumber }
-                                if filtered.count > 6 {
-                                    code = String(filtered.prefix(6))
-                                } else {
-                                    code = filtered
+                            TextField("Enter code", text: $code)
+                                .font(.app(.balooBold, size: 26))
+                                .foregroundColor(.black)
+                                .tint(.black)
+                                .multilineTextAlignment(.center)
+                                .keyboardType(.asciiCapable)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .submitLabel(.join)
+                                .onSubmit { attemptJoin() }
+                                .onChange(of: code) { _, new in
+                                    joinError = nil
+                                    let filtered = new.filter { $0.isLetter || $0.isNumber }
+                                    if filtered.count > 6 {
+                                        code = String(filtered.prefix(6))
+                                    } else {
+                                        code = filtered
+                                    }
                                 }
+                                .padding(.horizontal, 24)
+                        }
+                        .frame(height: h * 0.068)
+
+                        // "or"
+                        Text("or")
+                            .font(.app(.balooBold, size: 36))
+                            .foregroundColor(.black.opacity(0.5))
+
+                        // Create Team
+                        Button(action: onCreateTeam) {
+                            ZStack {
+                                Image("Botao_roxo")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 315, height: 100)
+
+                                Text("Create Team")
+                                    .font(.app(.balooBold, size: 30))
+                                    .foregroundColor(.white)
                             }
-                            .padding(.horizontal, 24)
+                        }
+                        .buttonStyle(.plain)
+                        .frame(height: h * 0.068)
                     }
-                    .frame(height: h * 0.068)
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 60)
                 }
                 .environment(\.colorScheme, .light)
-                .padding(.horizontal, 28)
                 .frame(maxWidth: .infinity)
-                .offset(y: h * 0.695)
+                .padding(.top, geo.safeAreaInsets.top + 90)
+                .frame(height: h)
 
-                // ── 4. Mão por cima de tudo (último no ZStack) ──
+                // ── 4. Mão por cima de tudo ──
                 Image("HandView")
                     .resizable()
                     .scaledToFit()
@@ -130,8 +135,18 @@ struct WelcomeView: View {
                     .offset(x: -70, y: 340)
             }
             .frame(width: w, height: h)
+            .offset(y: -keyboardHeight * 0.45)
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: keyboardHeight)
         }
         .ignoresSafeArea()
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { n in
+            if let frame = n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                keyboardHeight = frame.height
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
+        }
         .alert(
             "Can't join Bond",
             isPresented: Binding(get: { joinError != nil }, set: { if !$0 { joinError = nil } }),
@@ -140,14 +155,9 @@ struct WelcomeView: View {
         )
     }
 
-    // ── Lógica de join via CloudKit ─────────────────────────────
     private func attemptJoin() {
         let input = code.uppercased()
         guard input.count == 6 else { return }
-
-        guard UserManager.shared.canJoinOrCreateBond(currentCount: bonds.count) else {
-            joinError = .limitReached; return
-        }
 
         Task {
             do {

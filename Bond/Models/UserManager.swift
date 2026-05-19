@@ -50,7 +50,7 @@ final class UserManager {
 
     /// Verifica se o usuário pode criar ou entrar em mais um Bond
     func canJoinOrCreateBond(currentCount: Int) -> Bool {
-        currentCount < tier.maxBonds
+        return true // Testing mode
     }
 
     /// Verifica se um Bond ainda aceita novos membros (baseado no tier do criador)

@@ -18,7 +18,7 @@ struct HomeView: View {
     @State private var selectedBondIndex: Int? = nil
 
     // ── Dados do Game Center ─────────────────────────────────────
-    @State private var playerName: String  = "Player"
+    @State private var playerName: String  = ProfilePhotoStore.loadName() ?? "Player"
     @State private var playerPhoto: UIImage? = nil
 
     // ── Limites de tier ──────────────────────────────────────────
@@ -95,7 +95,14 @@ struct HomeView: View {
                 bonds.append(newBond)
             }
         }
-        .sheet(isPresented: $showProfile) {
+        .sheet(isPresented: $showProfile, onDismiss: {
+            if let saved = ProfilePhotoStore.load() {
+                playerPhoto = saved
+            }
+            if let name = ProfilePhotoStore.loadName(), !name.isEmpty {
+                playerName = name
+            }
+        }) {
             ProfileView()
         }
         // ── Feed do Bond selecionado ─────────────────────────────
@@ -117,18 +124,34 @@ struct HomeView: View {
                 FeedView(bond: $bonds[idx])
             }
         }
-        .onAppear { loadGameCenterPlayer() }
+        .onAppear { loadPlayerInfo() }
+        .onReceive(NotificationCenter.default.publisher(for: .GKPlayerAuthenticationDidChangeNotificationName)) { _ in
+            loadPlayerInfo()
+        }
+        .onChange(of: CloudKitManager.shared.currentPlayerName) { _, newName in
+            if !newName.isEmpty && newName != "Player" {
+                playerName = newName
+            }
+        }
     }
 
-    // ── Carrega nome e foto do Game Center ──────────────────────
-    private func loadGameCenterPlayer() {
+    private func loadPlayerInfo() {
+        if let saved = ProfilePhotoStore.load() {
+            playerPhoto = saved
+        }
+        setupAndLoadGameCenter()
+    }
+
+    private func setupAndLoadGameCenter() {
+        // Nome salvo manualmente pelo usuário tem prioridade
+        if let saved = ProfilePhotoStore.loadName(), !saved.isEmpty {
+            playerName = saved
+            return
+        }
+        // Fallback: nome do Game Center (só na primeira vez, sem salvar)
         let player = GKLocalPlayer.local
-        guard player.isAuthenticated else { return }
-        playerName = player.displayName
-        player.loadPhoto(for: .normal) { image, _ in
-            if let image {
-                DispatchQueue.main.async { playerPhoto = image }
-            }
+        if player.isAuthenticated {
+            playerName = player.displayName
         }
     }
 }

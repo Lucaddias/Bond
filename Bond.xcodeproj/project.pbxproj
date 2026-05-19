@@ -6,33 +6,6 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXBuildFile section */
-		31F1FC792FB65FC400538F9B /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC782FB65FC400538F9B /* FirebaseAI */; };
-		31F1FC7B2FB65FC400538F9B /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC7A2FB65FC400538F9B /* FirebaseAILogic */; };
-		31F1FC7D2FB65FC400538F9B /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC7C2FB65FC400538F9B /* FirebaseAnalytics */; };
-		31F1FC7F2FB65FC400538F9B /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC7E2FB65FC400538F9B /* FirebaseAnalyticsCore */; };
-		31F1FC812FB65FC400538F9B /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC802FB65FC400538F9B /* FirebaseAnalyticsIdentitySupport */; };
-		31F1FC832FB65FC400538F9B /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC822FB65FC400538F9B /* FirebaseAppCheck */; };
-		31F1FC852FB65FC400538F9B /* FirebaseAppDistribution-Beta in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC842FB65FC400538F9B /* FirebaseAppDistribution-Beta */; };
-		31F1FC872FB65FC400538F9B /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC862FB65FC400538F9B /* FirebaseAuth */; };
-		31F1FC892FB65FC400538F9B /* FirebaseAuthCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC882FB65FC400538F9B /* FirebaseAuthCombine-Community */; };
-		31F1FC8B2FB65FC400538F9B /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC8A2FB65FC400538F9B /* FirebaseCore */; };
-		31F1FC8D2FB65FC400538F9B /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC8C2FB65FC400538F9B /* FirebaseCrashlytics */; };
-		31F1FC8F2FB65FC400538F9B /* FirebaseDatabase in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC8E2FB65FC400538F9B /* FirebaseDatabase */; };
-		31F1FC912FB65FC400538F9B /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC902FB65FC400538F9B /* FirebaseFirestore */; };
-		31F1FC932FB65FC400538F9B /* FirebaseFirestoreCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC922FB65FC400538F9B /* FirebaseFirestoreCombine-Community */; };
-		31F1FC952FB65FC400538F9B /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC942FB65FC400538F9B /* FirebaseFunctions */; };
-		31F1FC972FB65FC400538F9B /* FirebaseFunctionsCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC962FB65FC400538F9B /* FirebaseFunctionsCombine-Community */; };
-		31F1FC992FB65FC400538F9B /* FirebaseInAppMessaging-Beta in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC982FB65FC400538F9B /* FirebaseInAppMessaging-Beta */; };
-		31F1FC9B2FB65FC400538F9B /* FirebaseInstallations in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC9A2FB65FC400538F9B /* FirebaseInstallations */; };
-		31F1FC9D2FB65FC400538F9B /* FirebaseMLModelDownloader in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC9C2FB65FC400538F9B /* FirebaseMLModelDownloader */; };
-		31F1FC9F2FB65FC400538F9B /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FC9E2FB65FC400538F9B /* FirebaseMessaging */; };
-		31F1FCA12FB65FC400538F9B /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FCA02FB65FC400538F9B /* FirebasePerformance */; };
-		31F1FCA32FB65FC400538F9B /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FCA22FB65FC400538F9B /* FirebaseRemoteConfig */; };
-		31F1FCA52FB65FC400538F9B /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FCA42FB65FC400538F9B /* FirebaseStorage */; };
-		31F1FCA72FB65FC400538F9B /* FirebaseStorageCombine-Community in Frameworks */ = {isa = PBXBuildFile; productRef = 31F1FCA62FB65FC400538F9B /* FirebaseStorageCombine-Community */; };
-/* End PBXBuildFile section */
-
 /* Begin PBXContainerItemProxy section */
 		313197C22FB399E000874548 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -88,37 +61,6 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		313197B12FB399DF00874548 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				31F1FC852FB65FC400538F9B /* FirebaseAppDistribution-Beta in Frameworks */,
-				31F1FC912FB65FC400538F9B /* FirebaseFirestore in Frameworks */,
-				31F1FC892FB65FC400538F9B /* FirebaseAuthCombine-Community in Frameworks */,
-				31F1FC9B2FB65FC400538F9B /* FirebaseInstallations in Frameworks */,
-				31F1FC7B2FB65FC400538F9B /* FirebaseAILogic in Frameworks */,
-				31F1FC812FB65FC400538F9B /* FirebaseAnalyticsIdentitySupport in Frameworks */,
-				31F1FC992FB65FC400538F9B /* FirebaseInAppMessaging-Beta in Frameworks */,
-				31F1FC792FB65FC400538F9B /* FirebaseAI in Frameworks */,
-				31F1FC8D2FB65FC400538F9B /* FirebaseCrashlytics in Frameworks */,
-				31F1FC972FB65FC400538F9B /* FirebaseFunctionsCombine-Community in Frameworks */,
-				31F1FCA72FB65FC400538F9B /* FirebaseStorageCombine-Community in Frameworks */,
-				31F1FC8F2FB65FC400538F9B /* FirebaseDatabase in Frameworks */,
-				31F1FCA52FB65FC400538F9B /* FirebaseStorage in Frameworks */,
-				31F1FCA32FB65FC400538F9B /* FirebaseRemoteConfig in Frameworks */,
-				31F1FC7D2FB65FC400538F9B /* FirebaseAnalytics in Frameworks */,
-				31F1FC9F2FB65FC400538F9B /* FirebaseMessaging in Frameworks */,
-				31F1FC9D2FB65FC400538F9B /* FirebaseMLModelDownloader in Frameworks */,
-				31F1FCA12FB65FC400538F9B /* FirebasePerformance in Frameworks */,
-				31F1FC8B2FB65FC400538F9B /* FirebaseCore in Frameworks */,
-				31F1FC832FB65FC400538F9B /* FirebaseAppCheck in Frameworks */,
-				31F1FC7F2FB65FC400538F9B /* FirebaseAnalyticsCore in Frameworks */,
-				31F1FC952FB65FC400538F9B /* FirebaseFunctions in Frameworks */,
-				31F1FC872FB65FC400538F9B /* FirebaseAuth in Frameworks */,
-				31F1FC932FB65FC400538F9B /* FirebaseFirestoreCombine-Community in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		313197BE2FB399E000874548 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -164,7 +106,6 @@
 			buildConfigurationList = 313197D52FB399E000874548 /* Build configuration list for PBXNativeTarget "Bond" */;
 			buildPhases = (
 				313197B02FB399DF00874548 /* Sources */,
-				313197B12FB399DF00874548 /* Frameworks */,
 				313197B22FB399DF00874548 /* Resources */,
 			);
 			buildRules = (
@@ -493,6 +434,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Bond/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Bond precisa acessar sua câmera para tirar fotos e gravar vídeos das suas conquistas.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bond precisa acessar o microfone para gravar vídeos com áudio.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Bond precisa salvar fotos e vídeos na sua galeria.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Bond precisa acessar sua galeria para escolher fotos e vídeos para compartilhar com seu time.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -502,7 +447,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = meu.aplicativo.com.Bond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -527,6 +472,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Bond/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Bond precisa acessar sua câmera para tirar fotos e gravar vídeos das suas conquistas.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bond precisa acessar o microfone para gravar vídeos com áudio.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Bond precisa salvar fotos e vídeos na sua galeria.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Bond precisa acessar sua galeria para escolher fotos e vídeos para compartilhar com seu time.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -536,7 +485,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = meu.aplicativo.com.Bond;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

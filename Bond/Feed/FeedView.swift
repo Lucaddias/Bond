@@ -20,6 +20,10 @@ struct FeedView: View {
     @State private var pickedVideoURL: URL?   = nil
     @State private var showNewPost        = false
 
+    // ── Perfil do usuário atual ──────────────────────────────────
+    private var currentPlayerID: String { CloudKitManager.shared.currentPlayerID }
+    @State private var currentUserPhoto: UIImage? = ProfilePhotoStore.load()
+
     // ── Player cache ────────────────────────────────────────────
     // Evita recriar AVPlayer a cada rebuild
     @State private var playerCache: [UUID: AVPlayer] = [:]
@@ -50,7 +54,6 @@ struct FeedView: View {
                             }
                             .buttonStyle(.plain)
                             Spacer()
-                            // ── Botão de teste: sair do bond ──
                             Button {
                                 Task {
                                     if let id = bond.recordID {
@@ -69,6 +72,18 @@ struct FeedView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, geo.safeAreaInsets.top + 60)
                     .padding(.bottom, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        // Recorta o bg_Feed alinhado ao topo para cobrir posts que sobem
+                        GeometryReader { _ in
+                            Image("bg_Feed")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: geo.size.width, height: geo.size.height)
+                                .clipped()
+                        }
+                        .ignoresSafeArea()
+                    )
 
                     // ── Posts ────────────────────────────────────
                     ScrollView(showsIndicators: false) {
@@ -79,7 +94,9 @@ struct FeedView: View {
                                 ForEach(bond.posts.indices, id: \.self) { index in
                                     PostCard(
                                         post: $bond.posts[index],
-                                        player: playerFor(post: bond.posts[index])
+                                        player: playerFor(post: bond.posts[index]),
+                                        currentPlayerID: currentPlayerID,
+                                        currentUserPhoto: currentUserPhoto
                                     )
                                 }
                             }
@@ -224,30 +241,40 @@ struct FeedView: View {
 struct PostCard: View {
     @Binding var post: PostModel
     var player: AVPlayer?
+    var currentPlayerID: String = ""
+    var currentUserPhoto: UIImage? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
             // ── Author ──────────────────────────────────────────
             HStack(spacing: 10) {
-                Circle()
-                    .fill(Color(red: 0.88, green: 0.88, blue: 0.90))
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Group {
-                            if let photo = post.authorPhoto {
-                                Image(uiImage: photo).frame(width: 44, height: 44).clipShape(Circle())
-                            } else {
-                                Image(systemName: "person.fill").foregroundColor(.black.opacity(0.35))
-                            }
-                        }
-                    )
+                ZStack {
+                    Circle()
+                        .fill(authorColor(for: post.authorName))
+                        .frame(width: 44, height: 44)
+
+                    let isMe = !currentPlayerID.isEmpty && post.authorPlayerID == currentPlayerID
+                    let avatarPhoto = isMe ? (currentUserPhoto ?? post.authorPhoto) : post.authorPhoto
+
+                    if let photo = avatarPhoto {
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 44, height: 44)
+                            .clipShape(Circle())
+                    } else {
+                        Text(initials(for: post.authorName))
+                            .font(.app(.balooBold, size: 16))
+                            .foregroundColor(.white)
+                    }
+                }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(post.authorName)
+                    Text(post.authorName.isEmpty ? "Unknown" : post.authorName)
                         .font(.app(.balooBold, size: 15))
                         .foregroundColor(.black)
-                    Text(post.timestamp, style: .time)
+                    Text(post.timestamp, style: .relative)
                         .font(.app(.balooMedium, size: 12))
                         .foregroundColor(.black.opacity(0.4))
                 }
@@ -261,23 +288,27 @@ struct PostCard: View {
             ZStack {
                 if let img = post.image {
                     Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
                         .frame(maxWidth: .infinity)
-                        .frame(height: 260)
+                        .frame(height: 280)
                         .clipped()
                 } else if let p = player {
                     VideoPlayer(player: p)
-                        .frame(height: 260)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 280)
                         .onAppear { p.play() }
                 } else if post.imageAsset != nil || post.videoAsset != nil {
-                    // Placeholder enquanto faz download
                     ZStack {
                         Rectangle()
                             .fill(Color(red: 0.92, green: 0.92, blue: 0.94))
-                            .frame(height: 260)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 280)
                         ProgressView()
                     }
                 }
             }
+            .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal, 16)
             // Download lazy do asset do CloudKit
@@ -335,6 +366,26 @@ struct PostCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: 4)
     }
+
+    private func initials(for name: String) -> String {
+        let parts = name.split(separator: " ")
+        if parts.count >= 2 {
+            return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
+        }
+        return String(name.prefix(2)).uppercased()
+    }
+
+    private func authorColor(for name: String) -> Color {
+        let colors: [Color] = [
+            Color(red: 0.42, green: 0.35, blue: 0.80),
+            Color(red: 0.20, green: 0.60, blue: 0.86),
+            Color(red: 0.90, green: 0.35, blue: 0.35),
+            Color(red: 0.25, green: 0.72, blue: 0.58),
+            Color(red: 0.95, green: 0.55, blue: 0.15)
+        ]
+        let index = abs(name.hashValue) % colors.count
+        return colors[index]
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -350,8 +401,14 @@ struct NewPostSheet: View {
     @State private var player: AVPlayer?
 
     var body: some View {
-        VStack(spacing: 0) {
+        ZStack {
+            Image("bg_Post")
+                .resizable()
+                .scaledToFill()
+                .ignoresSafeArea()
 
+        VStack(spacing: 0) {
+            
             // Handle bar
             RoundedRectangle(cornerRadius: 3)
                 .fill(Color(red: 0.80, green: 0.80, blue: 0.82))
@@ -362,12 +419,16 @@ struct NewPostSheet: View {
             Text("New Post")
                 .font(.app(.balooBold, size: 22))
                 .foregroundColor(.black)
-                .padding(.bottom, 20)
+                .padding(.bottom, 0)
+                .padding(.top, 60)
+                .padding(.trailing, 210)
 
             // Thumbnail
             ZStack {
                 if let img = image {
                     Image(uiImage: img)
+                        .resizable()
+                        .scaledToFill()
                         .frame(maxWidth: .infinity)
                         .frame(height: 220)
                         .clipped()
@@ -396,6 +457,7 @@ struct NewPostSheet: View {
 
                 TextEditor(text: $caption)
                     .font(.app(.balooMedium, size: 15))
+                    .foregroundColor(.black.opacity(0.7))
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
                     .frame(height: 100)
@@ -420,9 +482,10 @@ struct NewPostSheet: View {
                 }
                 .frame(maxWidth: .infinity)
             }
+            
             .buttonStyle(.plain)
             .padding(.horizontal, 24)
-            .padding(.bottom, 32)
+            Spacer()
         }
         .onAppear {
             if let url = videoURL {
@@ -430,6 +493,7 @@ struct NewPostSheet: View {
                 player?.play()
             }
         }
+        } // ZStack
     }
 }
 
@@ -532,4 +596,13 @@ struct GalleryPickerView: UIViewControllerRepresentable {
 // ─────────────────────────────────────────────────────────────────
 #Preview {
     FeedView(bond: .constant(BondModel(name: "Summer Squad")))
+}
+#Preview("New Post Sheet") {
+    let sampleImage = UIGraphicsImageRenderer(size: CGSize(width: 400, height: 300)).image { ctx in
+        UIColor.systemIndigo.setFill()
+        ctx.fill(CGRect(x: 0, y: 0, width: 400, height: 300))
+        UIColor.white.setFill()
+        ctx.fill(CGRect(x: 150, y: 100, width: 100, height: 100))
+    }
+    return NewPostSheet(image: sampleImage, videoURL: nil) { _ in }
 }

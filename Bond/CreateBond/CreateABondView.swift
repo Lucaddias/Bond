@@ -2,21 +2,21 @@
 // Bond
 
 import SwiftUI
+import CoreImage.CIFilterBuiltins
 
 struct CreateABondView: View {
 
     @Environment(\.dismiss) private var dismiss
     var onComplete: (BondModel) -> Void = { _ in }
-
-    /// Códigos já existentes para garantir unicidade local
     var existingCodes: Set<String> = []
 
     @State private var step: Int = 1
-    let totalSteps: Int = 4
+    let totalSteps: Int = 3  // barra mostra 3 steps
 
     // ── Step 1 ───────────────────────────────────────────────────
     @State private var bondTitle: String = ""
-    @State private var durationIndex: Double = 0   // índice em [7,15,30,60,90]
+    @State private var durationIndex: Double = 0
+    @State private var showEmojiPicker: Bool = false
 
     // ── Step 2 ───────────────────────────────────────────────────
     @State private var bondDescription: String = ""
@@ -27,16 +27,19 @@ struct CreateABondView: View {
     @State private var newChallenge: String = ""
     @State private var showAddChallenge: Bool = false
 
-    // ── Step 4 ───────────────────────────────────────────────────
+    // ── Step 4 (compartilhar — fora da barra) ────────────────────
     @State private var generatedCode: String = ""
     @State private var codeCopied: Bool = false
 
-    // Snap points do slider
     let durationOptions = [7, 15, 30, 60, 90]
     var durationDays: Int { durationOptions[Int(durationIndex)] }
 
-    // Tier do usuário atual
     private var userTier: UserTier { UserManager.shared.tier }
+    private var isLastContentStep: Bool { step == totalSteps }
+    private var isShareStep: Bool { step == 4 }
+    private var continueDisabled: Bool {
+        step == 1 && bondTitle.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -44,12 +47,11 @@ struct CreateABondView: View {
 
                 Color.white.ignoresSafeArea()
 
-                // ── Imagem decorativa do fundo (por step) ──
+                // ── Imagem decorativa do fundo ──
                 Group {
                     if step == 1 { Image("sheet_1") }
-                    if step == 2 { Image("sheet_2") }
-                    if step == 3 { Image("sheet_3") }
-                    if step == 4 { Image("sheet_3") }   // reutiliza sheet_3
+                    else if step == 2 { Image("sheet_2") }
+                    else { Image("sheet_3") }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .ignoresSafeArea()
@@ -58,143 +60,126 @@ struct CreateABondView: View {
                 // ── Layout principal ─────────────────────────────
                 VStack(spacing: 0) {
 
-                    // ── Header: ícone + título ──────────────────
-                    HStack(spacing: 8) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.57))
-                        Text("Settings")
-                            .font(.app(.balooBold, size: 20))
-                            .foregroundColor(.black)
+                    // ── Header: botão voltar + título ──────────────
+                    ZStack {
+                        HStack(alignment: .center, spacing: 8) {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.57))
+                            Text("Settings")
+                                .font(.app(.balooBold, size: 20))
+                                .foregroundColor(.black)
+                        }
+
+                        HStack {
+                            Button {
+                                if step > 1 {
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step -= 1 }
+                                } else {
+                                    dismiss()
+                                }
+                            } label: {
+                                ZStack {
+                                    Image("Botao_voltar")
+                                    Image(systemName: "arrow.left")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            Spacer()
+                        }
                     }
+                    .padding(.horizontal, 24)
                     .padding(.top, 20)
 
-                    // ── Progress bar ────────────────────────────
-                    GeometryReader { bar in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(Color(red: 0.80, green: 0.80, blue: 0.82))
-                                .frame(height: 10)
+                    // ── Progress bar (só para steps 1-3) ───────────
+                    if !isShareStep {
+                        GeometryReader { bar in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(red: 0.80, green: 0.80, blue: 0.82))
+                                    .frame(height: 10)
 
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [
-                                            Color(red: 1.0, green: 0.45, blue: 0.10),
-                                            Color(red: 1.0, green: 0.85, blue: 0.10)
-                                        ],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color(red: 1.0, green: 0.45, blue: 0.10),
+                                                Color(red: 1.0, green: 0.85, blue: 0.10)
+                                            ],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
                                     )
-                                )
-                                .frame(
-                                    width: bar.size.width * (CGFloat(step) / CGFloat(totalSteps)),
-                                    height: 10
-                                )
-                                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: step)
-                        }
-                    }
-                    .frame(height: 10)
-                    .padding(.top, 12)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 24)
-
-                    // ── Conteúdo da etapa ───────────────────────
-                    ScrollView(showsIndicators: false) {
-                        VStack(spacing: 0) {
-                            if step == 1 {
-                                StepOneView(
-                                    bondTitle: $bondTitle,
-                                    durationIndex: $durationIndex,
-                                    durationOptions: durationOptions,
-                                    durationDays: durationDays
-                                )
-                            } else if step == 2 {
-                                StepTwoView(
-                                    bondDescription: $bondDescription,
-                                    reward: $reward
-                                )
-                            } else if step == 3 {
-                                StepThreeView(
-                                    challenges: $challenges,
-                                    newChallenge: $newChallenge,
-                                    showAddChallenge: $showAddChallenge
-                                )
-                            } else {
-                                StepFourView(
-                                    bondName: bondTitle.trimmingCharacters(in: .whitespaces),
-                                    inviteCode: generatedCode,
-                                    maxParticipants: userTier.maxParticipantsAsCreator,
-                                    copied: $codeCopied
-                                )
+                                    .frame(
+                                        width: bar.size.width * (CGFloat(min(step, totalSteps)) / CGFloat(totalSteps)),
+                                        height: 10
+                                    )
+                                    .animation(.spring(response: 0.4, dampingFraction: 0.8), value: step)
                             }
                         }
+                        .frame(height: 10)
+                        .padding(.top, 12)
                         .padding(.horizontal, 24)
                         .padding(.bottom, 20)
-                    }
-                    .onChange(of: step) { _, newStep in
-                        // Gera o código ao entrar no step 4
-                        if newStep == 4 && generatedCode.isEmpty {
-                            generatedCode = Self.generateCode(avoiding: existingCodes)
-                        }
+                    } else {
+                        Spacer().frame(height: 32)
                     }
 
-                    // ── Botões fixos na base do VStack ───────────
-                    HStack(spacing: 16) {
-
-                        // Botão Voltar
-                        Button {
-                            if step > 1 {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step -= 1 }
-                            } else {
-                                dismiss()
-                            }
-                        } label: {
-                            ZStack {
-                                Image("Botao_voltar")
-                                Image(systemName: "arrow.left")
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
+                    // ── Conteúdo da etapa ───────────────────────────
+                    Group {
+                        if step == 1 {
+                            StepOneView(
+                                bondTitle: $bondTitle,
+                                durationIndex: $durationIndex,
+                                showEmojiPicker: $showEmojiPicker,
+                                durationOptions: durationOptions,
+                                durationDays: durationDays
+                            )
+                        } else if step == 2 {
+                            StepTwoView(
+                                bondDescription: $bondDescription,
+                                reward: $reward
+                            )
+                        } else if step == 3 {
+                            StepThreeView(
+                                challenges: $challenges,
+                                newChallenge: $newChallenge,
+                                showAddChallenge: $showAddChallenge
+                            )
+                        } else {
+                            StepShareView(
+                                bondName: bondTitle.trimmingCharacters(in: .whitespaces),
+                                inviteCode: generatedCode,
+                                maxParticipants: userTier.maxParticipantsAsCreator,
+                                copied: $codeCopied
+                            )
                         }
-                        .buttonStyle(.plain)
-
-                        // Botão Continuar / Criar / Concluir
-                        Button {
-                            if step < totalSteps {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step += 1 }
-                            } else {
-                                // Step 4 → cria o Bond com o código gerado
-                                var newBond = BondModel(
-                                    name: bondTitle.trimmingCharacters(in: .whitespaces),
-                                    bondDescription: bondDescription,
-                                    reward: reward,
-                                    challenges: challenges,
-                                    duration: durationDays
-                                )
-                                newBond.inviteCode = generatedCode
-                                newBond.maxParticipants = userTier.maxParticipantsAsCreator
-                                newBond.memberCount = 1
-                                onComplete(newBond)
-                                dismiss()
-                            }
-                        } label: {
-                            ZStack {
-                                Image("Botao_continuar")
-                                    .frame(maxWidth: .infinity)
-                                Text(step < 4 ? "Continue" : "Let's go!")
-                                    .font(.app(.balooBold, size: 20))
-                                    .foregroundColor(.white)
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.plain)
-                        .opacity(step == 1 && bondTitle.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1)
-                        .disabled(step == 1 && bondTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 12)
-                    .padding(.bottom, geo.safeAreaInsets.bottom + 306)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                    Spacer()
+
+                    // ── Botão continuar/finalizar ───────────────────
+                    Button {
+                        handleContinue()
+                    } label: {
+                        ZStack {
+                            Image("Botao_continuar")
+                                .frame(maxWidth: .infinity)
+                            Text(isShareStep ? "Done" : isLastContentStep ? "Let's go!" : "Continue")
+                                .font(.app(.balooBold, size: 20))
+                                .foregroundColor(.white)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(continueDisabled ? 0.4 : 1)
+                    .disabled(continueDisabled)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, geo.safeAreaInsets.bottom + 24)
                 }
             }
         }
@@ -202,7 +187,32 @@ struct CreateABondView: View {
         .environment(\.colorScheme, .light)
     }
 
-    // ── Gerador de código único ──────────────────────────────────
+    private func handleContinue() {
+        if isShareStep {
+            dismiss()
+        } else if isLastContentStep {
+            // Gera código e cria o bond
+            if generatedCode.isEmpty {
+                generatedCode = Self.generateCode(avoiding: existingCodes)
+            }
+            var newBond = BondModel(
+                name: bondTitle.trimmingCharacters(in: .whitespaces),
+                bondDescription: bondDescription,
+                reward: reward,
+                challenges: challenges,
+                duration: durationDays
+            )
+            newBond.inviteCode = generatedCode
+            newBond.maxParticipants = userTier.maxParticipantsAsCreator
+            newBond.memberCount = 1
+            onComplete(newBond)
+            // Vai para tela de compartilhamento
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step = 4 }
+        } else {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step += 1 }
+        }
+    }
+
     static func generateCode(avoiding existing: Set<String>) -> String {
         let chars = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
         var code: String
@@ -214,102 +224,16 @@ struct CreateABondView: View {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// MARK: - Step 4: Código de Convite
-// ─────────────────────────────────────────────────────────────────
-struct StepFourView: View {
-    let bondName: String
-    let inviteCode: String
-    let maxParticipants: Int
-    @Binding var copied: Bool
-
-    var body: some View {
-        VStack(spacing: 28) {
-
-            // Título
-            VStack(spacing: 4) {
-                Text("Your Bond is Ready!")
-                    .font(.app(.balooBold, size: 24))
-                    .foregroundColor(.black)
-                Text("Share the code below with your team")
-                    .font(.app(.balooMedium, size: 14))
-                    .foregroundColor(.black.opacity(0.5))
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.top, 8)
-
-            // Card do código
-            VStack(spacing: 12) {
-
-                Text("INVITE CODE")
-                    .font(.app(.balooMedium, size: 12))
-                    .foregroundColor(.black.opacity(0.4))
-                    .kerning(2)
-
-                Text(inviteCode)
-                    .font(.app(.balooBold, size: 46))
-                    .kerning(10)
-                    .foregroundColor(.black)
-
-                // Capacidade
-                HStack(spacing: 4) {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(.black.opacity(0.4))
-                    Text("Up to \(maxParticipants) members")
-                        .font(.app(.balooMedium, size: 13))
-                        .foregroundColor(.black.opacity(0.4))
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 28)
-            .padding(.horizontal, 24)
-            .background(
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(Color.white)
-                    .shadow(color: .black.opacity(0.10), radius: 16, x: 0, y: 6)
-            )
-
-            // Botão copiar
-            Button {
-                UIPasteboard.general.string = inviteCode
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { copied = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    withAnimation { copied = false }
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text(copied ? "Copied!" : "Copy Code")
-                        .font(.app(.balooBold, size: 16))
-                }
-                .foregroundColor(Color(red: 0.42, green: 0.35, blue: 0.80))
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color(red: 0.42, green: 0.35, blue: 0.80), lineWidth: 1.5)
-                )
-            }
-            .buttonStyle(.plain)
-
-            // Nota de case insensitive
-            Text("The code is case insensitive — BOND12 = bond12")
-                .font(.app(.balooMedium, size: 12))
-                .foregroundColor(.black.opacity(0.3))
-                .multilineTextAlignment(.center)
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────
 // MARK: - Step 1: Título + Duração
 // ─────────────────────────────────────────────────────────────────
 struct StepOneView: View {
     @Binding var bondTitle: String
     @Binding var durationIndex: Double
+    @Binding var showEmojiPicker: Bool
     let durationOptions: [Int]
     let durationDays: Int
+
+    private let emojis = ["🔥", "⚡️", "🏆", "💪", "🎯", "🚀", "❤️", "🌟", "🎉", "💫", "🤝", "🎮"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -330,12 +254,45 @@ struct StepOneView: View {
                             .autocorrectionDisabled()
                             .padding(.leading, 20)
 
-                        Image(systemName: "smiley")
-                            .foregroundColor(.black.opacity(0.4))
-                            .padding(.trailing, 40)
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                showEmojiPicker.toggle()
+                            }
+                        } label: {
+                            Image(systemName: "face.smiling")
+                                .font(.system(size: 22))
+                                .foregroundColor(showEmojiPicker
+                                    ? Color(red: 0.42, green: 0.35, blue: 0.80)
+                                    : .black.opacity(0.4))
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 20)
                     }
                 }
                 .frame(height: 56)
+
+                // ── Emoji picker ──
+                if showEmojiPicker {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(emojis, id: \.self) { emoji in
+                                Button {
+                                    bondTitle += emoji
+                                    showEmojiPicker = false
+                                } label: {
+                                    Text(emoji)
+                                        .font(.system(size: 28))
+                                        .padding(6)
+                                        .background(Color(red: 0.95, green: 0.95, blue: 0.97))
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
 
             // ── Duration ──
@@ -360,7 +317,6 @@ struct StepOneView: View {
                         )
                     )
 
-                // Labels dos pontos de parada
                 HStack {
                     ForEach(durationOptions, id: \.self) { val in
                         Text("\(val)")
@@ -398,10 +354,11 @@ struct StepTwoView: View {
                         Text("Describe your Bond...")
                             .font(.app(.balooMedium, size: 15))
                             .foregroundColor(.black.opacity(0.3))
-                            .padding(.horizontal, 20)
+                            .padding(.horizontal, 24)
                             .padding(.top, 16)
                             .allowsHitTesting(false)
                     }
+
                     TextEditor(text: $bondDescription)
                         .font(.app(.balooMedium, size: 15))
                         .foregroundColor(.black.opacity(0.7))
@@ -409,6 +366,7 @@ struct StepTwoView: View {
                         .background(Color.clear)
                         .padding(.horizontal, 12)
                         .padding(.top, 8)
+                        .frame(height: 130)
                 }
                 .clipped()
             }
@@ -420,10 +378,7 @@ struct StepTwoView: View {
                     .foregroundColor(.black)
 
                 ZStack {
-                    Image("Botao_cinza")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: .infinity)
+                    Image("Botao_branco")
 
                     TextField("What's the prize?", text: $reward)
                         .font(.app(.balooMedium, size: 16))
@@ -431,7 +386,7 @@ struct StepTwoView: View {
                         .autocorrectionDisabled()
                         .padding(.horizontal, 20)
                 }
-                .frame(height: 52)
+                .frame(height: 56)
             }
         }
     }
@@ -457,7 +412,6 @@ struct StepThreeView: View {
                     .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.57))
             }
 
-            // Chips dos challenges
             if !challenges.isEmpty {
                 FlowLayout(spacing: 8) {
                     ForEach(challenges, id: \.self) { challenge in
@@ -468,7 +422,6 @@ struct StepThreeView: View {
                 }
             }
 
-            // Botão + add challenge
             Button {
                 withAnimation { showAddChallenge.toggle() }
             } label: {
@@ -488,14 +441,10 @@ struct StepThreeView: View {
             }
             .buttonStyle(.plain)
 
-            // Input de novo challenge
             if showAddChallenge {
                 HStack(spacing: 10) {
                     ZStack {
-                        Image("Botao_cinza")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: .infinity)
+                        Image("Botao_branco")
 
                         TextField("New challenge...", text: $newChallenge)
                             .font(.app(.balooMedium, size: 15))
@@ -503,7 +452,7 @@ struct StepThreeView: View {
                             .autocorrectionDisabled()
                             .padding(.horizontal, 20)
                     }
-                    .frame(height: 48)
+                    .frame(height: 52)
 
                     Button {
                         let t = newChallenge.trimmingCharacters(in: .whitespaces)
@@ -522,6 +471,111 @@ struct StepThreeView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MARK: - Step Share: QR Code + Código de Convite
+// ─────────────────────────────────────────────────────────────────
+struct StepShareView: View {
+    let bondName: String
+    let inviteCode: String
+    let maxParticipants: Int
+    @Binding var copied: Bool
+
+    var body: some View {
+        VStack(spacing: 24) {
+
+            VStack(spacing: 4) {
+                Text("Your Bond is Ready! 🎉")
+                    .font(.app(.balooBold, size: 24))
+                    .foregroundColor(.black)
+                Text("Share with your team")
+                    .font(.app(.balooMedium, size: 14))
+                    .foregroundColor(.black.opacity(0.5))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, 8)
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            // QR Code
+            if let qrImage = generateQRCode(from: inviteCode) {
+                Image(uiImage: qrImage)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 180, height: 180)
+                    .padding(16)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .shadow(color: .black.opacity(0.10), radius: 12, x: 0, y: 4)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+
+            // Código em texto
+            VStack(spacing: 6) {
+                Text("INVITE CODE")
+                    .font(.app(.balooMedium, size: 11))
+                    .foregroundColor(.black.opacity(0.4))
+                    .kerning(2)
+
+                Text(inviteCode)
+                    .font(.app(.balooBold, size: 44))
+                    .kerning(8)
+                    .foregroundColor(.black)
+
+                HStack(spacing: 4) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.black.opacity(0.35))
+                    Text("Up to \(maxParticipants) members")
+                        .font(.app(.balooMedium, size: 13))
+                        .foregroundColor(.black.opacity(0.35))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(red: 0.97, green: 0.97, blue: 0.99))
+            )
+
+            // Botão copiar
+            Button {
+                UIPasteboard.general.string = inviteCode
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { copied = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    withAnimation { copied = false }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text(copied ? "Copied!" : "Copy Code")
+                        .font(.app(.balooBold, size: 16))
+                }
+                .foregroundColor(Color(red: 0.42, green: 0.35, blue: 0.80))
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color(red: 0.42, green: 0.35, blue: 0.80), lineWidth: 1.5)
+                )
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+    }
+
+    private func generateQRCode(from string: String) -> UIImage? {
+        let context = CIContext()
+        let filter = CIFilter.qrCodeGenerator()
+        filter.setValue(Data(string.utf8), forKey: "inputMessage")
+        filter.setValue("H", forKey: "inputCorrectionLevel")
+        guard let output = filter.outputImage else { return nil }
+        let scaled = output.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 }
 

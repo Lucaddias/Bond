@@ -2,6 +2,7 @@
 // Bond
 
 import SwiftUI
+import GameKit
 
 enum AppScreen {
     case welcome, home
@@ -64,6 +65,7 @@ struct ContentView: View {
             }
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.85), value: screen)
+        .onAppear { setupGameCenter() }
         // Carrega bonds do CloudKit quando o app abre
         .task {
             guard CloudKitManager.shared.iCloudAvailable else { return }
@@ -83,6 +85,35 @@ struct ContentView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(ckError ?? "")
+        }
+    }
+}
+
+// MARK: - Game Center
+extension ContentView {
+    private func setupGameCenter() {
+        let player = GKLocalPlayer.local
+        player.authenticateHandler = { viewController, _ in
+            if let vc = viewController {
+                UIApplication.shared.connectedScenes
+                    .compactMap { $0 as? UIWindowScene }
+                    .first?.windows.first?.rootViewController?.present(vc, animated: true)
+            } else if player.isAuthenticated {
+                let name = player.displayName
+                // Só salva o nome do GC se o usuário ainda não definiu um nome próprio
+                if ProfilePhotoStore.loadName() == nil {
+                    ProfilePhotoStore.saveName(name)
+                }
+                CloudKitManager.shared.currentPlayerName = ProfilePhotoStore.loadName() ?? name
+                CloudKitManager.shared.currentPlayerID   = player.gamePlayerID
+                if ProfilePhotoStore.load() == nil {
+                    player.loadPhoto(for: .normal) { image, _ in
+                        if let image {
+                            DispatchQueue.main.async { ProfilePhotoStore.save(image) }
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -53,10 +53,15 @@ final class CloudKitManager {
         // Player ID via Game Center (fallback para UUID local)
         let player = GKLocalPlayer.local
         if player.isAuthenticated {
-            currentPlayerID   = player.gamePlayerID
-            currentPlayerName = player.displayName
+            currentPlayerID = player.gamePlayerID
+            // Respeita nome salvo manualmente; só usa GC na primeira vez
+            if ProfilePhotoStore.loadName() == nil {
+                ProfilePhotoStore.saveName(player.displayName)
+            }
+            currentPlayerName = ProfilePhotoStore.loadName() ?? player.displayName
         } else {
-            // Usuário sem Game Center — persiste UUID local
+            // Fallback para nome salvo manualmente pelo usuário
+            currentPlayerName = ProfilePhotoStore.loadName() ?? "Player"
             let key = "localPlayerID"
             if let saved = UserDefaults.standard.string(forKey: key) {
                 currentPlayerID = saved
