@@ -13,9 +13,6 @@ struct BondApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .task {
-                    await CloudKitManager.shared.setup()
-                }
         }
     }
 }

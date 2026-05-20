@@ -19,6 +19,7 @@ struct FeedView: View {
     @State private var pickedImage: UIImage?  = nil
     @State private var pickedVideoURL: URL?   = nil
     @State private var showNewPost        = false
+    @State private var showBondInfo       = false
 
     // ── Perfil do usuário atual ──────────────────────────────────
     private var currentPlayerID: String { CloudKitManager.shared.currentPlayerID }
@@ -34,6 +35,8 @@ struct FeedView: View {
 
                 // ── Background ──────────────────────────────────
                 Image("bg_Feed")
+                    .resizable()
+                    .scaledToFit()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .ignoresSafeArea()
 
@@ -54,17 +57,10 @@ struct FeedView: View {
                             }
                             .buttonStyle(.plain)
                             Spacer()
-                            Button {
-                                Task {
-                                    if let id = bond.recordID {
-                                        try? await CloudKitManager.shared.leaveBond(bondRecordID: id)
-                                    }
-                                    dismiss()
-                                }
-                            } label: {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.red)
+                            Button { showBondInfo = true } label: {
+                                Image(systemName: "line.3.horizontal")
+                                    .font(.system(size: 22, weight: .semibold))
+                                    .foregroundColor(.black)
                             }
                             .buttonStyle(.plain)
                         }
@@ -143,6 +139,10 @@ struct FeedView: View {
                         showNewPost = true
                     }
                 }
+        }
+        // ── Bond Info ────────────────────────────────────────────
+        .fullScreenCover(isPresented: $showBondInfo) {
+            BondInfoView(bond: $bond)
         }
         // ── Novo post (caption) ──────────────────────────────────
         .sheet(isPresented: $showNewPost, onDismiss: clearPicked) {

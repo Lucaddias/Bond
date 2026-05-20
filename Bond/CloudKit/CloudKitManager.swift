@@ -92,6 +92,11 @@ final class CloudKitManager {
         record["maxParticipants"] = bond.maxParticipants as CKRecordValue
         record["memberCount"]     = 1 as CKRecordValue
         record["creatorID"]       = currentPlayerID
+        record["duration"]        = bond.duration as CKRecordValue
+        record["startDate"]       = bond.startDate as CKRecordValue
+        record["reward"]          = bond.reward
+        record["challenges"]      = bond.challenges as CKRecordValue
+        record["bondDescription"] = bond.bondDescription
 
         do {
             let saved = try await db.save(record)
@@ -361,7 +366,11 @@ final class CloudKitManager {
         bond.maxParticipants = record["maxParticipants"] as? Int ?? 5
         bond.memberCount     = record["memberCount"]     as? Int ?? 1
         bond.creatorID       = record["creatorID"]       as? String ?? ""
-
+        bond.duration        = record["duration"]        as? Int ?? 0
+        bond.startDate       = record["startDate"]       as? Date ?? Date()
+        bond.reward          = record["reward"]          as? String ?? ""
+        bond.challenges      = record["challenges"]      as? [String] ?? []
+        bond.bondDescription = record["bondDescription"] as? String ?? ""
         return bond
     }
 

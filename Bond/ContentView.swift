@@ -68,6 +68,8 @@ struct ContentView: View {
         .onAppear { setupGameCenter() }
         // Carrega bonds do CloudKit quando o app abre
         .task {
+            // setup() DEVE rodar primeiro para ter iCloudAvailable e currentPlayerID corretos
+            await CloudKitManager.shared.setup()
             guard CloudKitManager.shared.iCloudAvailable else { return }
             isLoadingBonds = true
             defer { isLoadingBonds = false }

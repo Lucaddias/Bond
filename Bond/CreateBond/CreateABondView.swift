@@ -174,6 +174,7 @@ struct CreateABondView: View {
                                 .foregroundColor(.white)
                         }
                         .frame(maxWidth: .infinity)
+                        .padding(.bottom, 40)
                     }
                     .buttonStyle(.plain)
                     .opacity(continueDisabled ? 0.4 : 1)
@@ -233,7 +234,7 @@ struct StepOneView: View {
     let durationOptions: [Int]
     let durationDays: Int
 
-    private let emojis = ["🔥", "⚡️", "🏆", "💪", "🎯", "🚀", "❤️", "🌟", "🎉", "💫", "🤝", "🎮"]
+    private let emojis = ["🎨", "🎶", "🧶", "🏋️‍♂️", "📚", "❤️", "🚀", "🎯", "💪", "🏆", "⚡️", "🔥"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -252,7 +253,7 @@ struct StepOneView: View {
                             .font(.app(.balooMedium, size: 18))
                             .foregroundColor(.black.opacity(0.6))
                             .autocorrectionDisabled()
-                            .padding(.leading, 20)
+                            .padding(.leading, 40)
 
                         Button {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -266,7 +267,7 @@ struct StepOneView: View {
                                     : .black.opacity(0.4))
                         }
                         .buttonStyle(.plain)
-                        .padding(.trailing, 20)
+                        .padding(.trailing, 40)
                     }
                 }
                 .frame(height: 56)
@@ -290,6 +291,7 @@ struct StepOneView: View {
                             }
                         }
                         .padding(.horizontal, 4)
+                        
                     }
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }
@@ -345,6 +347,7 @@ struct StepTwoView: View {
                 Text("Description")
                     .font(.app(.balooBold, size: 20))
                     .foregroundColor(.black)
+                    .padding(.leading, 40)
 
                 ZStack(alignment: .topLeading) {
                     Image("AboutSection")
@@ -356,6 +359,7 @@ struct StepTwoView: View {
                             .foregroundColor(.black.opacity(0.3))
                             .padding(.horizontal, 24)
                             .padding(.top, 16)
+                            .padding(.leading, 10)
                             .allowsHitTesting(false)
                     }
 
@@ -367,6 +371,7 @@ struct StepTwoView: View {
                         .padding(.horizontal, 12)
                         .padding(.top, 8)
                         .frame(height: 130)
+                        .padding(.leading, 20)
                 }
                 .clipped()
             }
@@ -376,6 +381,7 @@ struct StepTwoView: View {
                 Text("Reward")
                     .font(.app(.balooBold, size: 20))
                     .foregroundColor(.black)
+                    .padding(.leading, 40)
 
                 ZStack {
                     Image("Botao_branco")
@@ -385,6 +391,7 @@ struct StepTwoView: View {
                         .foregroundColor(.black.opacity(0.6))
                         .autocorrectionDisabled()
                         .padding(.horizontal, 20)
+                        .padding(.leading, 10)
                 }
                 .frame(height: 56)
             }
@@ -451,6 +458,7 @@ struct StepThreeView: View {
                             .foregroundColor(.black.opacity(0.6))
                             .autocorrectionDisabled()
                             .padding(.horizontal, 20)
+                            .padding(.leading, 40)
                     }
                     .frame(height: 52)
 
@@ -656,4 +664,31 @@ struct FlowLayout: Layout {
 
 #Preview {
     CreateABondView()
+}
+#Preview("Step 1") {
+    StepOneView(
+        bondTitle: .constant("Summer Squad"),
+        durationIndex: .constant(1),
+        showEmojiPicker: .constant(false),
+        durationOptions: [7, 15, 30, 60, 90],
+        durationDays: 15
+    )
+    .padding(24)
+}
+
+#Preview("Step 2") {
+    StepTwoView(
+        bondDescription: .constant(""),
+        reward: .constant("")
+    )
+    .padding(24)
+}
+
+#Preview("Step 3") {
+    StepThreeView(
+        challenges: .constant(["Run 5km", "No sugar"]),
+        newChallenge: .constant(""),
+        showAddChallenge: .constant(false)
+    )
+    .padding(24)
 }

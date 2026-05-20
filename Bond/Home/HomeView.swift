@@ -113,8 +113,10 @@ struct HomeView: View {
             ),
             onDismiss: {
                 // Atualiza lista após sair do feed (ex: usuário saiu do bond)
+                // Só substitui bonds se o resultado não for vazio (evita apagar tudo por falha de rede)
                 Task {
-                    if let fetched = try? await CloudKitManager.shared.fetchUserBonds() {
+                    if let fetched = try? await CloudKitManager.shared.fetchUserBonds(),
+                       !fetched.isEmpty {
                         bonds = fetched
                     }
                 }

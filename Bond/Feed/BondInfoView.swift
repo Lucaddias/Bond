@@ -1,0 +1,450 @@
+// BondInfoView.swift
+// Bond
+
+import SwiftUI
+import PhotosUI
+import CloudKit
+
+struct BondInfoView: View {
+
+    @Binding var bond: BondModel
+    @Environment(\.dismiss) private var dismiss
+
+    // ── Cover photo ──────────────────────────────────────────────
+    @State private var photoPickerItem: PhotosPickerItem? = nil
+    @State private var showCameraForCover = false
+
+    // ── Share sheet ──────────────────────────────────────────────
+    @State private var showShare = false
+    @State private var codeCopied = false
+
+    // ── Leave bond ───────────────────────────────────────────────
+    @State private var showLeaveAlert = false
+
+    // ── Membros derivados dos posts ───────────────────────────────
+    private var members: [(name: String, photo: UIImage?, postCount: Int)] {
+        var dict: [String: (name: String, photo: UIImage?, count: Int)] = [:]
+        for post in bond.posts {
+            let key = post.authorPlayerID.isEmpty ? post.authorName : post.authorPlayerID
+            if var existing = dict[key] {
+                existing.count += 1
+                dict[key] = existing
+            } else {
+                dict[key] = (post.authorName, post.authorPhoto, 1)
+            }
+        }
+        return dict.values
+            .map { (name: $0.name, photo: $0.photo, postCount: $0.count) }
+            .sorted { $0.postCount > $1.postCount }
+    }
+
+    private var maxPosts: Int { members.map(\.postCount).max() ?? 1 }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .top) {
+
+                // ── Background ───────────────────────────────────
+                Image("bg_BondInfo")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                    .ignoresSafeArea()
+
+                // ── Conteúdo scrollável ──────────────────────────
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+
+                        // ── Header: voltar + sair ────────────────
+                        HStack {
+                            Button {
+                                dismiss()
+                            } label: {
+                                ZStack {
+                                    Image("Botao_voltar")
+                                    Image(systemName: "arrow.left")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .buttonStyle(.plain)
+
+                            Spacer()
+
+                            Button {
+                                showLeaveAlert = true
+                            } label: {
+                                Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.red.opacity(0.8))
+                                    .padding(10)
+                                    .background(Color.white.opacity(0.8))
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.top, max(geo.safeAreaInsets.top, 44) + 16)
+
+                        // ── Foto do Bond + botão share ───────────
+                        ZStack(alignment: .bottomTrailing) {
+                            Group {
+                                if let img = bond.coverImage {
+                                    Image(uiImage: img)
+                                        .resizable()
+                                        .scaledToFill()
+                                } else {
+                                    Rectangle()
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color(red: 0.88, green: 0.82, blue: 1.0),
+                                                    Color(red: 0.72, green: 0.60, blue: 0.95)
+                                                ],
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .overlay(
+                                            Image(systemName: "photo")
+                                                .font(.system(size: 40))
+                                                .foregroundColor(.white.opacity(0.6))
+                                        )
+                                }
+                            }
+                            .frame(width: 160, height: 160)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white, lineWidth: 4))
+                            .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
+
+                            // Botão trocar foto (camera + galeria)
+                            Menu {
+                                Button {
+                                    showCameraForCover = true
+                                } label: {
+                                    Label("Camera", systemImage: "camera")
+                                }
+                                PhotosPicker(selection: $photoPickerItem, matching: .images) {
+                                    Label("Library", systemImage: "photo.on.rectangle")
+                                }
+                            } label: {
+                                Image("Botao_Adicionar_Foto")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 44, height: 44)
+                            }
+                        }
+
+                        // ── Nome do Bond + botão Share ───────────
+                        Text(bond.name)
+                            .font(.app(.balooBold, size: 28))
+                            .foregroundColor(.black)
+                            .multilineTextAlignment(.center)
+                            
+                            .overlay(alignment: .trailing) {
+                                Button {
+                                    showShare = true
+                                } label: {
+                                    Image("botao_compartilhar")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 44, height: 44)
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.trailing, 24)
+                            }
+
+                        // ── Progress / Time ──────────────────────
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("PROGRESS/time")
+                                    .font(.app(.balooBold, size: 14))
+                                    .foregroundColor(.black)
+                                Spacer()
+                                if bond.duration > 0 {
+                                    let daysLeft = max(0, bond.duration - Int(Date().timeIntervalSince(bond.startDate) / 86400))
+                                    Text("\(daysLeft) days left")
+                                        .font(.app(.balooMedium, size: 12))
+                                        .foregroundColor(.black.opacity(0.5))
+                                }
+                            }
+
+                            GeometryReader { bar in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color.white.opacity(0.6))
+                                        .frame(height: 12)
+
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(
+                                            LinearGradient(
+                                                colors: [
+                                                    Color(red: 1.0, green: 0.45, blue: 0.10),
+                                                    Color(red: 1.0, green: 0.85, blue: 0.10)
+                                                ],
+                                                startPoint: .leading,
+                                                endPoint: .trailing
+                                            )
+                                        )
+                                        .frame(
+                                            width: bar.size.width * bond.timeProgress,
+                                            height: 12
+                                        )
+                                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: bond.timeProgress)
+                                }
+                            }
+                            .frame(height: 12)
+                        }
+                        .padding(.horizontal, 24)
+
+                        // ── Rewards + Challenges ─────────────────
+                        HStack(alignment: .top, spacing: 16) {
+
+                            // Rewards
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 6) {
+                                    Text("🏆")
+                                    Text("REWARDS")
+                                        .font(.app(.balooBold, size: 14))
+                                        .foregroundColor(.black)
+                                }
+
+                                if bond.reward.isEmpty {
+                                    Text("No reward set")
+                                        .font(.app(.balooMedium, size: 13))
+                                        .foregroundColor(.black.opacity(0.35))
+                                } else {
+                                    Text(bond.reward)
+                                        .font(.app(.balooMedium, size: 13))
+                                        .foregroundColor(.black.opacity(0.7))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(16)
+                            .background(Color.white.opacity(0.7))
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+
+                            // Challenges
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Challenges")
+                                    .font(.app(.balooBold, size: 14))
+                                    .foregroundColor(.black)
+
+                                if bond.challenges.isEmpty {
+                                    Text("No challenges set")
+                                        .font(.app(.balooMedium, size: 13))
+                                        .foregroundColor(.black.opacity(0.35))
+                                } else {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        ForEach(bond.challenges, id: \.self) { challenge in
+                                            HStack(alignment: .top, spacing: 4) {
+                                                Text("•")
+                                                    .foregroundColor(.black.opacity(0.5))
+                                                Text(challenge)
+                                                    .font(.app(.balooMedium, size: 13))
+                                                    .foregroundColor(.black.opacity(0.7))
+                                                    .fixedSize(horizontal: false, vertical: true)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(16)
+                            .background(Color.white.opacity(0.7))
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+                        }
+                        .padding(.horizontal, 24)
+
+                        // ── Members ──────────────────────────────
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("members")
+                                .font(.app(.balooBold, size: 18))
+                                .foregroundColor(.black)
+
+                            Divider()
+
+                            if members.isEmpty {
+                                Text("No posts yet")
+                                    .font(.app(.balooMedium, size: 13))
+                                    .foregroundColor(.black.opacity(0.35))
+                            } else {
+                                ForEach(members, id: \.name) { member in
+                                    MemberRow(
+                                        name: member.name,
+                                        photo: member.photo,
+                                        postCount: member.postCount,
+                                        maxPosts: maxPosts
+                                    )
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, geo.safeAreaInsets.bottom + 40)
+                    }
+                }
+            }
+        }
+        .ignoresSafeArea()
+        // ── Trocar foto via galeria ──────────────────────────────
+        .onChange(of: photoPickerItem) { _, newItem in
+            Task {
+                if let data = try? await newItem?.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await MainActor.run { bond.coverImage = image }
+                }
+            }
+        }
+        // ── Trocar foto via câmera ───────────────────────────────
+        .fullScreenCover(isPresented: $showCameraForCover) {
+            CameraPickerView(
+                image: Binding(
+                    get: { nil },
+                    set: { img in if let img { bond.coverImage = img } }
+                ),
+                videoURL: .constant(nil)
+            )
+            .ignoresSafeArea()
+        }
+        // ── Share sheet ──────────────────────────────────────────
+        .sheet(isPresented: $showShare) {
+            ShareCodeSheet(
+                bondName: bond.name,
+                inviteCode: bond.inviteCode,
+                maxParticipants: bond.maxParticipants,
+                copied: $codeCopied
+            )
+            .presentationDetents([.medium, .large])
+        }
+        // ── Alerta: sair do Bond ─────────────────────────────────
+        .alert("Leave Bond?", isPresented: $showLeaveAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Leave", role: .destructive) {
+                Task {
+                    if let id = bond.recordID {
+                        try? await CloudKitManager.shared.leaveBond(bondRecordID: id)
+                    }
+                    dismiss()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to leave \"\(bond.name)\"? You'll need the invite code to rejoin.")
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MARK: - Member Row
+// ─────────────────────────────────────────────────────────────────
+struct MemberRow: View {
+    let name: String
+    let photo: UIImage?
+    let postCount: Int
+    let maxPosts: Int
+
+    var progress: Double {
+        maxPosts > 0 ? Double(postCount) / Double(maxPosts) : 0
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Avatar
+            ZStack {
+                Circle()
+                    .fill(Color(red: 0.88, green: 0.82, blue: 1.0))
+                    .frame(width: 48, height: 48)
+
+                if let photo {
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 48, height: 48)
+                        .clipShape(Circle())
+                } else {
+                    Text(initials(for: name))
+                        .font(.app(.balooBold, size: 16))
+                        .foregroundColor(Color(red: 0.42, green: 0.35, blue: 0.80))
+                }
+            }
+
+            // Nome + barra
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(name.isEmpty ? "Member" : name)
+                        .font(.app(.balooBold, size: 14))
+                        .foregroundColor(.black)
+                    Spacer()
+                    Text("posts")
+                        .font(.app(.balooMedium, size: 11))
+                        .foregroundColor(.black.opacity(0.4))
+                }
+
+                GeometryReader { bar in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.black.opacity(0.08))
+                            .frame(height: 8)
+
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color(red: 0.25, green: 0.60, blue: 0.25))
+                            .frame(width: bar.size.width * progress, height: 8)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.8), value: progress)
+                    }
+                }
+                .frame(height: 8)
+            }
+        }
+    }
+
+    private func initials(for name: String) -> String {
+        let parts = name.split(separator: " ")
+        if parts.count >= 2 {
+            return String(parts[0].prefix(1) + parts[1].prefix(1)).uppercased()
+        }
+        return String(name.prefix(2)).uppercased()
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MARK: - Share Code Sheet (reutiliza lógica do StepShareView)
+// ─────────────────────────────────────────────────────────────────
+struct ShareCodeSheet: View {
+    let bondName: String
+    let inviteCode: String
+    let maxParticipants: Int
+    @Binding var copied: Bool
+
+    var body: some View {
+        StepShareView(
+            bondName: bondName,
+            inviteCode: inviteCode,
+            maxParticipants: maxParticipants,
+            copied: $copied
+        )
+        .padding(.top, 24)
+        .padding(.horizontal, 24)
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MARK: - Preview
+// ─────────────────────────────────────────────────────────────────
+#Preview {
+    BondInfoView(bond: .constant({
+        var b = BondModel(name: "festinha na casa do jv")
+        b.reward = "Alpha Champion Digital Badge • 20% Off Discount Coupon"
+        b.challenges = ["Post every day", "Run 5km", "No junk food"]
+        b.duration = 30
+        b.startDate = Calendar.current.date(byAdding: .day, value: -10, to: Date()) ?? Date()
+        b.inviteCode = "ABC123"
+        b.maxParticipants = 5
+        b.posts = [
+            PostModel(authorName: "Lucas", caption: "Day 1"),
+            PostModel(authorName: "Lucas", caption: "Day 2"),
+            PostModel(authorName: "Ana", caption: "Hello"),
+        ]
+        return b
+    }()))
+}

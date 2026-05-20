@@ -30,4 +30,15 @@ struct BondModel: Identifiable {
 
     /// ID do criador (GKLocalPlayer.gamePlayerID ou UUID local)
     var creatorID: String = ""
+
+    /// Data de início do bond (usada para calcular o progresso de tempo)
+    var startDate: Date = Date()
+
+    /// Progresso de 0.0 a 1.0 baseado no tempo decorrido vs duração total
+    var timeProgress: Double {
+        guard duration > 0 else { return 0 }
+        let total = Double(duration) * 86400
+        let elapsed = Date().timeIntervalSince(startDate)
+        return min(max(elapsed / total, 0), 1)
+    }
 }
