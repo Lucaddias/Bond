@@ -148,7 +148,7 @@ struct BondInfoView: View {
                                 Button {
                                     showShare = true
                                 } label: {
-                                    Image("botao_compartilhar")
+                                    Image("Botao_Compartilhar")
                                         .resizable()
                                         .scaledToFit()
                                         .frame(width: 44, height: 44)

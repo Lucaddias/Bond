@@ -48,14 +48,14 @@ struct CreateABondView: View {
                 Color.white.ignoresSafeArea()
 
                 // ── Imagem decorativa do fundo ──
-                Group {
-                    if step == 1 { Image("sheet_1") }
-                    else if step == 2 { Image("sheet_2") }
-                    else { Image("sheet_3") }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
+                let bgName = step == 1 ? "bg_Config3" : step == 2 ? "bg_Config2" : "bg_Config1"
+                Image(bgName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
 
                 // ── Layout principal ─────────────────────────────
                 VStack(spacing: 0) {
@@ -182,9 +182,10 @@ struct CreateABondView: View {
                     .padding(.horizontal, 24)
                     .padding(.bottom, geo.safeAreaInsets.bottom + 24)
                 }
+                .padding(.top, 50)
             }
         }
-        .ignoresSafeArea(edges: .bottom)
+        .ignoresSafeArea()
         .environment(\.colorScheme, .light)
     }
 
@@ -244,6 +245,7 @@ struct StepOneView: View {
                 Text("Title")
                     .font(.app(.balooBold, size: 20))
                     .foregroundColor(.black)
+                    .padding(.leading, 40)
 
                 ZStack {
                     Image("Botao_branco")
@@ -493,18 +495,7 @@ struct StepShareView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-
-            VStack(spacing: 4) {
-                Text("Your Bond is Ready! 🎉")
-                    .font(.app(.balooBold, size: 24))
-                    .foregroundColor(.black)
-                Text("Share with your team")
-                    .font(.app(.balooMedium, size: 14))
-                    .foregroundColor(.black.opacity(0.5))
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.top, 8)
-            .frame(maxWidth: .infinity, alignment: .center)
+            Spacer()
 
             // QR Code
             if let qrImage = generateQRCode(from: inviteCode) {

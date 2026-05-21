@@ -314,5 +314,23 @@ struct AddBondCard: View {
 // MARK: - Preview
 // ─────────────────────────────────────────────────────────────────
 #Preview {
-    HomeView(bonds: .constant([]))
+    let bondPhoto = UIImage(named: "bg_BondFoto")
+    let profilePhoto = UIImage(named: "bg_ProfilePreview")
+
+    var bond = BondModel(name: "Summer Squad 🏖️")
+    bond.coverImage = bondPhoto
+    bond.reward = "Pizza night for everyone"
+    bond.challenges = ["Post every day", "Run 5km"]
+    bond.duration = 30
+    bond.startDate = Calendar.current.date(byAdding: .day, value: -10, to: Date()) ?? Date()
+    bond.inviteCode = "ABC123"
+    bond.maxParticipants = 5
+
+    return HomeView(bonds: .constant([bond]))
+        .onAppear {
+            if let photo = profilePhoto {
+                ProfilePhotoStore.save(photo)
+            }
+            ProfilePhotoStore.saveName("canário")
+        }
 }
