@@ -8,6 +8,7 @@ import CloudKit
 struct BondInfoView: View {
 
     @Binding var bond: BondModel
+    var onLeaveBond: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
 
     // ── Cover photo ──────────────────────────────────────────────
@@ -75,12 +76,13 @@ struct BondInfoView: View {
                             Button {
                                 showLeaveAlert = true
                             } label: {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(.red.opacity(0.8))
-                                    .padding(10)
-                                    .background(Color.white.opacity(0.8))
-                                    .clipShape(Circle())
+                                ZStack {
+                                    Image("Botao_sair")
+                                        .scaleEffect(x: -1, y: 1)
+                                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
                             }
                             .buttonStyle(.plain)
                         }
@@ -294,6 +296,9 @@ struct BondInfoView: View {
                 if let data = try? await newItem?.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
                     await MainActor.run { bond.coverImage = image }
+                    if let id = bond.recordID {
+                        try? await CloudKitManager.shared.updateBondCover(bondRecordID: id, image: image)
+                    }
                 }
             }
         }
@@ -302,7 +307,16 @@ struct BondInfoView: View {
             CameraPickerView(
                 image: Binding(
                     get: { nil },
-                    set: { img in if let img { bond.coverImage = img } }
+                    set: { img in
+                        if let img {
+                            bond.coverImage = img
+                            Task {
+                                if let id = bond.recordID {
+                                    try? await CloudKitManager.shared.updateBondCover(bondRecordID: id, image: img)
+                                }
+                            }
+                        }
+                    }
                 ),
                 videoURL: .constant(nil)
             )
@@ -326,7 +340,9 @@ struct BondInfoView: View {
                     if let id = bond.recordID {
                         try? await CloudKitManager.shared.leaveBond(bondRecordID: id)
                     }
-                    dismiss()
+                    // Volta direto pra home: dispara callback do parent que
+                    // remove o bond do array e fecha as covers
+                    onLeaveBond()
                 }
             }
         } message: {

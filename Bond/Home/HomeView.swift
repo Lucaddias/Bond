@@ -90,7 +90,7 @@ struct HomeView: View {
             }
         }
         .ignoresSafeArea()
-        .sheet(isPresented: $showCreateBond) {
+        .fullScreenCover(isPresented: $showCreateBond) {
             CreateABondView(existingCodes: existingCodes) { newBond in
                 bonds.append(newBond)
             }
@@ -122,8 +122,16 @@ struct HomeView: View {
                 }
             }
         ) {
-            if let idx = selectedBondIndex {
-                FeedView(bond: $bonds[idx])
+            if let idx = selectedBondIndex, idx < bonds.count {
+                FeedView(bond: $bonds[idx], onLeaveBond: {
+                    // 1. Fecha o fullScreenCover (FeedView + BondInfoView)
+                    let leavingIndex = idx
+                    selectedBondIndex = nil
+                    // 2. Remove o bond do array local (mantém no CloudKit; só a membership foi apagada)
+                    if leavingIndex < bonds.count {
+                        bonds.remove(at: leavingIndex)
+                    }
+                })
             }
         }
         .onAppear { loadPlayerInfo() }

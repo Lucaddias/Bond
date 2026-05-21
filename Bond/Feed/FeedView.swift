@@ -12,6 +12,7 @@ import CloudKit
 struct FeedView: View {
 
     @Binding var bond: BondModel
+    var onLeaveBond: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
 
     // ── Media picker state ──────────────────────────────────────
@@ -142,7 +143,11 @@ struct FeedView: View {
         }
         // ── Bond Info ────────────────────────────────────────────
         .fullScreenCover(isPresented: $showBondInfo) {
-            BondInfoView(bond: $bond)
+            BondInfoView(bond: $bond, onLeaveBond: {
+                // Fecha BondInfoView e propaga o leave para o HomeView
+                showBondInfo = false
+                onLeaveBond()
+            })
         }
         // ── Novo post (caption) ──────────────────────────────────
         .sheet(isPresented: $showNewPost, onDismiss: clearPicked) {

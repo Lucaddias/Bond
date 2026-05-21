@@ -37,7 +37,7 @@ struct ContentView: View {
                     insertion: .move(edge: .leading),
                     removal: .move(edge: .leading)
                 ))
-                .sheet(isPresented: $showCreateBond) {
+                .fullScreenCover(isPresented: $showCreateBond) {
                     CreateABondView(existingCodes: existingCodes) { localBond in
                         // 1. Adiciona imediatamente na UI (optimistic)
                         bonds.append(localBond)

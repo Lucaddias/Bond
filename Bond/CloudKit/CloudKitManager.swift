@@ -79,7 +79,12 @@ final class CloudKitManager {
 
     /// Cria um Bond no CloudKit com o código já gerado localmente.
     func createBond(_ bond: BondModel) async throws -> BondModel {
+        // Garante que setup já rodou antes de criar (evita membership com playerID vazio)
+        if currentPlayerID.isEmpty {
+            await setup()
+        }
         guard iCloudAvailable else { throw CloudKitError.iCloudNotAvailable }
+        guard !currentPlayerID.isEmpty else { throw CloudKitError.iCloudNotAvailable }
 
         // Garante unicidade do código no servidor
         if let _ = try await fetchBondRecord(byCode: bond.inviteCode) {
@@ -97,6 +102,9 @@ final class CloudKitManager {
         record["reward"]          = bond.reward
         record["challenges"]      = bond.challenges as CKRecordValue
         record["bondDescription"] = bond.bondDescription
+        if let cover = bond.coverImage {
+            record["coverAsset"] = try? encodeImageAsset(cover)
+        }
 
         do {
             let saved = try await db.save(record)
@@ -112,6 +120,10 @@ final class CloudKitManager {
 
     /// Entra num Bond existente pelo código de convite.
     func joinBond(code: String, currentBondCount: Int) async throws -> BondModel {
+        // Garante que setup() já rodou (evita iCloudAvailable = false por race condition)
+        if !iCloudAvailable || currentPlayerID.isEmpty {
+            await setup()
+        }
         guard iCloudAvailable else { throw CloudKitError.iCloudNotAvailable }
 
         guard UserManager.shared.canJoinOrCreateBond(currentCount: currentBondCount) else {
@@ -186,6 +198,14 @@ final class CloudKitManager {
         } catch {
             throw CloudKitError.from(error)
         }
+    }
+
+    /// Atualiza a foto de capa de um Bond existente no CloudKit.
+    func updateBondCover(bondRecordID: CKRecord.ID, image: UIImage) async throws {
+        guard iCloudAvailable else { throw CloudKitError.iCloudNotAvailable }
+        let record = try await db.record(for: bondRecordID)
+        record["coverAsset"] = try encodeImageAsset(image)
+        _ = try await db.save(record)
     }
 
     /// Remove o usuário atual de um Bond (apaga o BondMembership dele).
@@ -371,6 +391,9 @@ final class CloudKitManager {
         bond.reward          = record["reward"]          as? String ?? ""
         bond.challenges      = record["challenges"]      as? [String] ?? []
         bond.bondDescription = record["bondDescription"] as? String ?? ""
+        if let asset = record["coverAsset"] as? CKAsset {
+            bond.coverImage = try? downloadImage(from: asset)
+        }
         return bond
     }
 

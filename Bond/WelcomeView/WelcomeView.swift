@@ -15,13 +15,15 @@ struct WelcomeView: View {
         case bondFull
         case limitReached
         case alreadyMember
+        case iCloudUnavailable
 
         var errorDescription: String? {
             switch self {
-            case .bondNotFound:  return "Bond not found. Check the code and try again."
-            case .bondFull:      return "This Bond is full and can't accept new members."
-            case .limitReached:  return "You've reached your Bond limit. Upgrade to Premium for more."
-            case .alreadyMember: return "You're already a member of this Bond."
+            case .bondNotFound:      return "Bond not found. Check the code and try again."
+            case .bondFull:          return "This Bond is full and can't accept new members."
+            case .limitReached:      return "You've reached your Bond limit. Upgrade to Premium for more."
+            case .alreadyMember:     return "You're already a member of this Bond."
+            case .iCloudUnavailable: return "iCloud is not available. Sign in to iCloud in Settings and try again."
             }
         }
     }
@@ -169,10 +171,12 @@ struct WelcomeView: View {
                 code = ""
             } catch let e as CloudKitError {
                 switch e {
-                case .bondNotFound:   joinError = .bondNotFound
-                case .bondFull:       joinError = .bondFull
-                case .alreadyMember:  joinError = .alreadyMember
-                default:              joinError = .bondNotFound
+                case .bondNotFound:      joinError = .bondNotFound
+                case .bondFull:          joinError = .bondFull
+                case .alreadyMember:     joinError = .alreadyMember
+                case .iCloudNotAvailable,
+                     .networkUnavailable: joinError = .iCloudUnavailable
+                default:                 joinError = .bondNotFound
                 }
             } catch {
                 joinError = .bondNotFound
