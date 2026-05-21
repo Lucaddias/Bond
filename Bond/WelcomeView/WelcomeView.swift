@@ -16,6 +16,8 @@ struct WelcomeView: View {
         case limitReached
         case alreadyMember
         case iCloudUnavailable
+        case networkUnavailable
+        case generic(String)
 
         var errorDescription: String? {
             switch self {
@@ -24,6 +26,8 @@ struct WelcomeView: View {
             case .limitReached:      return "You've reached your Bond limit. Upgrade to Premium for more."
             case .alreadyMember:     return "You're already a member of this Bond."
             case .iCloudUnavailable: return "iCloud is not available. Sign in to iCloud in Settings and try again."
+            case .networkUnavailable:return "No internet connection. Check your network and try again."
+            case .generic(let message): return message
             }
         }
     }
@@ -174,12 +178,13 @@ struct WelcomeView: View {
                 case .bondNotFound:      joinError = .bondNotFound
                 case .bondFull:          joinError = .bondFull
                 case .alreadyMember:     joinError = .alreadyMember
-                case .iCloudNotAvailable,
-                     .networkUnavailable: joinError = .iCloudUnavailable
-                default:                 joinError = .bondNotFound
+                case .iCloudNotAvailable: joinError = .iCloudUnavailable
+                case .networkUnavailable: joinError = .networkUnavailable
+                default:
+                    joinError = .generic(e.errorDescription ?? "Failed to join Bond.")
                 }
             } catch {
-                joinError = .bondNotFound
+                joinError = .generic(error.localizedDescription)
             }
         }
     }

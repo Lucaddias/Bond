@@ -11,6 +11,7 @@ import Observation
 // ─────────────────────────────────────────────────────────────────
 private enum RecordType {
     static let bond       = "Bond"
+    static let bondCover  = "BondCover"
     static let membership = "BondMembership"
     static let post       = "Post"
     static let like       = "Like"
@@ -34,8 +35,17 @@ final class CloudKitManager {
     // ── Infra ────────────────────────────────────────────────────
     private let container = CKContainer(identifier: "iCloud.com.seuteam.Bond")
     private var db: CKDatabase { container.publicCloudDatabase }
+    private let localPlayerIDKey = "localPlayerID"
 
     private init() {}
+
+    private var shouldUseLocalIdentity: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }
 
     // ─────────────────────────────────────────────────────────────
     // MARK: - Setup
@@ -53,24 +63,29 @@ final class CloudKitManager {
         // Player ID via Game Center (fallback para UUID local)
         let player = GKLocalPlayer.local
         if player.isAuthenticated {
-            currentPlayerID = player.gamePlayerID
-            // Respeita nome salvo manualmente; só usa GC na primeira vez
-            if ProfilePhotoStore.loadName() == nil {
-                ProfilePhotoStore.saveName(player.displayName)
-            }
-            currentPlayerName = ProfilePhotoStore.loadName() ?? player.displayName
+            syncAuthenticatedPlayer(player)
         } else {
             // Fallback para nome salvo manualmente pelo usuário
             currentPlayerName = ProfilePhotoStore.loadName() ?? "Player"
-            let key = "localPlayerID"
-            if let saved = UserDefaults.standard.string(forKey: key) {
-                currentPlayerID = saved
-            } else {
-                let generated = UUID().uuidString
-                UserDefaults.standard.set(generated, forKey: key)
-                currentPlayerID = generated
-            }
+            currentPlayerID = localIdentityID()
         }
+    }
+
+    func syncAuthenticatedPlayer(_ player: GKLocalPlayer) {
+        currentPlayerID = shouldUseLocalIdentity ? localIdentityID() : player.gamePlayerID
+        if ProfilePhotoStore.loadName() == nil {
+            ProfilePhotoStore.saveName(player.displayName)
+        }
+        currentPlayerName = ProfilePhotoStore.loadName() ?? player.displayName
+    }
+
+    private func localIdentityID() -> String {
+        if let saved = UserDefaults.standard.string(forKey: localPlayerIDKey) {
+            return saved
+        }
+        let generated = UUID().uuidString
+        UserDefaults.standard.set(generated, forKey: localPlayerIDKey)
+        return generated
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -134,7 +149,7 @@ final class CloudKitManager {
             throw CloudKitError.bondNotFound
         }
 
-        let memberCount    = bondRecord["memberCount"]    as? Int ?? 1
+        let memberCount     = try await fetchMembershipCount(bondRecordID: bondRecord.recordID)
         let maxParticipants = bondRecord["maxParticipants"] as? Int ?? 5
 
         guard memberCount < maxParticipants else { throw CloudKitError.bondFull }
@@ -142,16 +157,14 @@ final class CloudKitManager {
         let alreadyMember = try await checkMembership(bondRecordID: bondRecord.recordID)
         guard !alreadyMember else { throw CloudKitError.alreadyMember }
 
-        // Cria membership e incrementa contador
         try await createMembership(bondRecordID: bondRecord.recordID)
-        bondRecord["memberCount"] = (memberCount + 1) as CKRecordValue
-        do {
-            _ = try await db.save(bondRecord)
-        } catch {
-            throw CloudKitError.from(error)
-        }
 
-        return try bondFromRecord(bondRecord)
+        var joinedBond = try bondFromRecord(bondRecord)
+        if let latestCover = try? await fetchLatestBondCover(bondRecordID: bondRecord.recordID) {
+            joinedBond.coverImage = latestCover
+        }
+        joinedBond.memberCount = memberCount + 1
+        return joinedBond
     }
 
     /// Busca todos os Bonds dos quais o usuário é membro.
@@ -164,12 +177,18 @@ final class CloudKitManager {
         do {
             let (results, _) = try await db.records(matching: query)
             var bonds: [BondModel] = []
+            var seenBondIDs: Set<String> = []
 
             for (_, result) in results {
                 guard let membership  = try? result.get(),
                       let bondRef     = membership["bondRef"] as? CKRecord.Reference,
                       let bondRecord  = try? await db.record(for: bondRef.recordID),
-                      let bond        = try? bondFromRecord(bondRecord) else { continue }
+                      var bond        = try? bondFromRecord(bondRecord) else { continue }
+                guard seenBondIDs.insert(bondRecord.recordID.recordName).inserted else { continue }
+                if let latestCover = try? await fetchLatestBondCover(bondRecordID: bondRecord.recordID) {
+                    bond.coverImage = latestCover
+                }
+                bond.memberCount = (try? await fetchMembershipCount(bondRecordID: bondRecord.recordID)) ?? bond.memberCount
                 bonds.append(bond)
             }
 
@@ -202,26 +221,46 @@ final class CloudKitManager {
 
     /// Atualiza a foto de capa de um Bond existente no CloudKit.
     func updateBondCover(bondRecordID: CKRecord.ID, image: UIImage) async throws {
+        if !iCloudAvailable || currentPlayerID.isEmpty {
+            await setup()
+        }
         guard iCloudAvailable else { throw CloudKitError.iCloudNotAvailable }
-        let record = try await db.record(for: bondRecordID)
-        record["coverAsset"] = try encodeImageAsset(image)
+        guard !currentPlayerID.isEmpty else { throw CloudKitError.iCloudNotAvailable }
+
+        let record = CKRecord(recordType: RecordType.bondCover)
+        record["bondRef"] = CKRecord.Reference(recordID: bondRecordID, action: .none)
+        record["authorPlayerID"] = currentPlayerID
+        record["updatedAt"] = Date() as CKRecordValue
+        record["imageAsset"] = try encodeImageAsset(image)
         _ = try await db.save(record)
     }
 
     /// Remove o usuário atual de um Bond (apaga o BondMembership dele).
     func leaveBond(bondRecordID: CKRecord.ID) async throws {
+        if !iCloudAvailable || currentPlayerID.isEmpty {
+            await setup()
+        }
         guard iCloudAvailable else { throw CloudKitError.iCloudNotAvailable }
+        guard !currentPlayerID.isEmpty else { throw CloudKitError.iCloudNotAvailable }
 
-        let bondRef   = CKRecord.Reference(recordID: bondRecordID, action: .none)
-        let predicate = NSPredicate(format: "bondRef == %@ AND playerID == %@", bondRef, currentPlayerID)
+        let predicate = NSPredicate(format: "playerID == %@", currentPlayerID)
         let query     = CKQuery(recordType: RecordType.membership, predicate: predicate)
 
         let (results, _) = try await db.records(matching: query)
+        var deletedMembership = false
         for (recordID, result) in results {
-            if (try? result.get()) != nil {
+            guard let membership = try? result.get(),
+                  let bondRef = membership["bondRef"] as? CKRecord.Reference,
+                  bondRef.recordID == bondRecordID else { continue }
+            do {
                 try await db.deleteRecord(withID: recordID)
+                deletedMembership = true
+            } catch {
+                throw CloudKitError.from(error)
             }
         }
+
+        guard deletedMembership else { return }
     }
 
     /// Salva um novo Post no CloudKit (com upload de asset se necessário).
@@ -229,7 +268,7 @@ final class CloudKitManager {
         guard iCloudAvailable else { throw CloudKitError.iCloudNotAvailable }
 
         let record  = CKRecord(recordType: RecordType.post)
-        let bondRef = CKRecord.Reference(recordID: bondRecordID, action: .deleteSelf)
+        let bondRef = CKRecord.Reference(recordID: bondRecordID, action: .none)
 
         record["bondRef"]        = bondRef
         record["authorPlayerID"] = currentPlayerID
@@ -357,9 +396,31 @@ final class CloudKitManager {
         return !results.isEmpty
     }
 
+    private func fetchMembershipCount(bondRecordID: CKRecord.ID) async throws -> Int {
+        let bondRef   = CKRecord.Reference(recordID: bondRecordID, action: .none)
+        let predicate = NSPredicate(format: "bondRef == %@", bondRef)
+        let query     = CKQuery(recordType: RecordType.membership, predicate: predicate)
+        let (results, _) = try await db.records(matching: query)
+        return results.compactMap { try? $0.1.get() }.count
+    }
+
+    private func fetchLatestBondCover(bondRecordID: CKRecord.ID) async throws -> UIImage? {
+        let bondRef   = CKRecord.Reference(recordID: bondRecordID, action: .none)
+        let predicate = NSPredicate(format: "bondRef == %@", bondRef)
+        let query     = CKQuery(recordType: RecordType.bondCover, predicate: predicate)
+        query.sortDescriptors = [NSSortDescriptor(key: "updatedAt", ascending: false)]
+
+        let (results, _) = try await db.records(matching: query, resultsLimit: 1)
+        guard let record = results.first.flatMap({ try? $0.1.get() }),
+              let asset = record["imageAsset"] as? CKAsset else {
+            return nil
+        }
+        return try downloadImage(from: asset)
+    }
+
     private func createMembership(bondRecordID: CKRecord.ID) async throws {
         let record    = CKRecord(recordType: RecordType.membership)
-        record["bondRef"]    = CKRecord.Reference(recordID: bondRecordID, action: .deleteSelf)
+        record["bondRef"]    = CKRecord.Reference(recordID: bondRecordID, action: .none)
         record["playerID"]   = currentPlayerID
         record["playerName"] = currentPlayerName
         _ = try await db.save(record)
@@ -392,7 +453,9 @@ final class CloudKitManager {
         bond.challenges      = record["challenges"]      as? [String] ?? []
         bond.bondDescription = record["bondDescription"] as? String ?? ""
         if let asset = record["coverAsset"] as? CKAsset {
-            bond.coverImage = try? downloadImage(from: asset)
+            bond.coverImage = (try? downloadImage(from: asset)) ?? BondModel.defaultCoverImage
+        } else {
+            bond.coverImage = BondModel.defaultCoverImage
         }
         return bond
     }

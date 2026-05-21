@@ -6,9 +6,15 @@ import UIKit
 import CloudKit
 
 struct BondModel: Identifiable {
+    static let defaultCoverAssetName = "bg_BondFoto"
+
+    static var defaultCoverImage: UIImage? {
+        UIImage(named: defaultCoverAssetName)
+    }
+
     let id: UUID = UUID()
     var name: String
-    var coverImage: UIImage?
+    var coverImage: UIImage? = BondModel.defaultCoverImage
     var bondDescription: String = ""
     var reward: String = ""
     var challenges: [String] = []

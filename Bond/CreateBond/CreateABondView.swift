@@ -7,7 +7,7 @@ import CoreImage.CIFilterBuiltins
 struct CreateABondView: View {
 
     @Environment(\.dismiss) private var dismiss
-    var onComplete: (BondModel) -> Void = { _ in }
+    var onComplete: (BondModel) async throws -> Void = { _ in }
     var existingCodes: Set<String> = []
 
     @State private var step: Int = 1
@@ -30,6 +30,8 @@ struct CreateABondView: View {
     // ── Step 4 (compartilhar — fora da barra) ────────────────────
     @State private var generatedCode: String = ""
     @State private var codeCopied: Bool = false
+    @State private var isSavingBond: Bool = false
+    @State private var saveErrorMessage: String? = nil
 
     let durationOptions = [7, 15, 30, 60, 90]
     var durationDays: Int { durationOptions[Int(durationIndex)] }
@@ -169,7 +171,7 @@ struct CreateABondView: View {
                         ZStack {
                             Image("Botao_continuar")
                                 .frame(maxWidth: .infinity)
-                            Text(isShareStep ? "Done" : isLastContentStep ? "Let's go!" : "Continue")
+                            Text(isSavingBond ? "Saving..." : isShareStep ? "Done" : isLastContentStep ? "Let's go!" : "Continue")
                                 .font(.app(.balooBold, size: 20))
                                 .foregroundColor(.white)
                         }
@@ -178,7 +180,7 @@ struct CreateABondView: View {
                     }
                     .buttonStyle(.plain)
                     .opacity(continueDisabled ? 0.4 : 1)
-                    .disabled(continueDisabled)
+                    .disabled(continueDisabled || isSavingBond)
                     .padding(.horizontal, 24)
                     .padding(.bottom, geo.safeAreaInsets.bottom + 24)
                 }
@@ -187,6 +189,14 @@ struct CreateABondView: View {
         }
         .ignoresSafeArea()
         .environment(\.colorScheme, .light)
+        .alert("Sync Error", isPresented: Binding(
+            get: { saveErrorMessage != nil },
+            set: { if !$0 { saveErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "")
+        }
     }
 
     private func handleContinue() {
@@ -207,9 +217,21 @@ struct CreateABondView: View {
             newBond.inviteCode = generatedCode
             newBond.maxParticipants = userTier.maxParticipantsAsCreator
             newBond.memberCount = 1
-            onComplete(newBond)
-            // Vai para tela de compartilhamento
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step = 4 }
+            isSavingBond = true
+            Task {
+                do {
+                    try await onComplete(newBond)
+                    await MainActor.run {
+                        isSavingBond = false
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step = 4 }
+                    }
+                } catch {
+                    await MainActor.run {
+                        isSavingBond = false
+                        saveErrorMessage = (error as? CloudKitError)?.errorDescription ?? error.localizedDescription
+                    }
+                }
+            }
         } else {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step += 1 }
         }

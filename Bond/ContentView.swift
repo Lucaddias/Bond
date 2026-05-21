@@ -38,22 +38,10 @@ struct ContentView: View {
                     removal: .move(edge: .leading)
                 ))
                 .fullScreenCover(isPresented: $showCreateBond) {
-                    CreateABondView(existingCodes: existingCodes) { localBond in
-                        // 1. Adiciona imediatamente na UI (optimistic)
-                        bonds.append(localBond)
-                        // 2. Persiste no CloudKit em background
-                        Task {
-                            do {
-                                let saved = try await CloudKitManager.shared.createBond(localBond)
-                                // Substitui o item local pelo salvo (com recordID)
-                                if let idx = bonds.firstIndex(where: { $0.id == localBond.id }) {
-                                    bonds[idx] = saved
-                                }
-                            } catch {
-                                ckError = (error as? CloudKitError)?.errorDescription ?? error.localizedDescription
-                            }
-                        }
-                    }
+                    CreateABondView(onComplete: { localBond in
+                        let saved = try await CloudKitManager.shared.createBond(localBond)
+                        bonds.append(saved)
+                    }, existingCodes: existingCodes)
                 }
 
             case .home:
@@ -75,7 +63,7 @@ struct ContentView: View {
             defer { isLoadingBonds = false }
             do {
                 let fetched = try await CloudKitManager.shared.fetchUserBonds()
-                if !fetched.isEmpty { bonds = fetched }
+                bonds = fetched
             } catch {
                 ckError = (error as? CloudKitError)?.errorDescription ?? error.localizedDescription
             }
@@ -106,8 +94,7 @@ extension ContentView {
                 if ProfilePhotoStore.loadName() == nil {
                     ProfilePhotoStore.saveName(name)
                 }
-                CloudKitManager.shared.currentPlayerName = ProfilePhotoStore.loadName() ?? name
-                CloudKitManager.shared.currentPlayerID   = player.gamePlayerID
+                CloudKitManager.shared.syncAuthenticatedPlayer(player)
                 if ProfilePhotoStore.load() == nil {
                     player.loadPhoto(for: .normal) { image, _ in
                         if let image {

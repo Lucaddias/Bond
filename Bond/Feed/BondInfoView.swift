@@ -21,6 +21,8 @@ struct BondInfoView: View {
 
     // ── Leave bond ───────────────────────────────────────────────
     @State private var showLeaveAlert = false
+    @State private var leaveErrorMessage: String? = nil
+    @State private var coverErrorMessage: String? = nil
 
     // ── Membros derivados dos posts ───────────────────────────────
     private var members: [(name: String, photo: UIImage?, postCount: Int)] {
@@ -97,22 +99,9 @@ struct BondInfoView: View {
                                         .resizable()
                                         .scaledToFill()
                                 } else {
-                                    Rectangle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    Color(red: 0.88, green: 0.82, blue: 1.0),
-                                                    Color(red: 0.72, green: 0.60, blue: 0.95)
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .overlay(
-                                            Image(systemName: "photo")
-                                                .font(.system(size: 40))
-                                                .foregroundColor(.white.opacity(0.6))
-                                        )
+                                    Image("bg_BondFoto")
+                                        .resizable()
+                                        .scaledToFill()
                                 }
                             }
                             .frame(width: 160, height: 160)
@@ -295,10 +284,7 @@ struct BondInfoView: View {
             Task {
                 if let data = try? await newItem?.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
-                    await MainActor.run { bond.coverImage = image }
-                    if let id = bond.recordID {
-                        try? await CloudKitManager.shared.updateBondCover(bondRecordID: id, image: image)
-                    }
+                    await saveCover(image)
                 }
             }
         }
@@ -309,12 +295,7 @@ struct BondInfoView: View {
                     get: { nil },
                     set: { img in
                         if let img {
-                            bond.coverImage = img
-                            Task {
-                                if let id = bond.recordID {
-                                    try? await CloudKitManager.shared.updateBondCover(bondRecordID: id, image: img)
-                                }
-                            }
+                            Task { await saveCover(img) }
                         }
                     }
                 ),
@@ -337,16 +318,50 @@ struct BondInfoView: View {
             Button("Cancel", role: .cancel) {}
             Button("Leave", role: .destructive) {
                 Task {
-                    if let id = bond.recordID {
-                        try? await CloudKitManager.shared.leaveBond(bondRecordID: id)
+                    do {
+                        if let id = bond.recordID {
+                            try await CloudKitManager.shared.leaveBond(bondRecordID: id)
+                        }
+                        // Volta direto pra home: dispara callback do parent que
+                        // remove o bond do array e fecha as covers
+                        onLeaveBond()
+                    } catch {
+                        await MainActor.run {
+                            leaveErrorMessage = (error as? CloudKitError)?.errorDescription ?? error.localizedDescription
+                        }
                     }
-                    // Volta direto pra home: dispara callback do parent que
-                    // remove o bond do array e fecha as covers
-                    onLeaveBond()
                 }
             }
         } message: {
             Text("Are you sure you want to leave \"\(bond.name)\"? You'll need the invite code to rejoin.")
+        }
+        .alert("Couldn't leave Bond", isPresented: Binding(
+            get: { leaveErrorMessage != nil },
+            set: { if !$0 { leaveErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(leaveErrorMessage ?? "")
+        }
+        .alert("Couldn't update photo", isPresented: Binding(
+            get: { coverErrorMessage != nil },
+            set: { if !$0 { coverErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(coverErrorMessage ?? "")
+        }
+    }
+
+    private func saveCover(_ image: UIImage) async {
+        await MainActor.run { bond.coverImage = image }
+        guard let id = bond.recordID else { return }
+        do {
+            try await CloudKitManager.shared.updateBondCover(bondRecordID: id, image: image)
+        } catch {
+            await MainActor.run {
+                coverErrorMessage = (error as? CloudKitError)?.errorDescription ?? error.localizedDescription
+            }
         }
     }
 }

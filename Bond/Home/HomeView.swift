@@ -91,9 +91,10 @@ struct HomeView: View {
         }
         .ignoresSafeArea()
         .fullScreenCover(isPresented: $showCreateBond) {
-            CreateABondView(existingCodes: existingCodes) { newBond in
-                bonds.append(newBond)
-            }
+            CreateABondView(onComplete: { newBond in
+                let saved = try await CloudKitManager.shared.createBond(newBond)
+                bonds.append(saved)
+            }, existingCodes: existingCodes)
         }
         .sheet(isPresented: $showProfile, onDismiss: {
             if let saved = ProfilePhotoStore.load() {
@@ -113,10 +114,8 @@ struct HomeView: View {
             ),
             onDismiss: {
                 // Atualiza lista após sair do feed (ex: usuário saiu do bond)
-                // Só substitui bonds se o resultado não for vazio (evita apagar tudo por falha de rede)
                 Task {
-                    if let fetched = try? await CloudKitManager.shared.fetchUserBonds(),
-                       !fetched.isEmpty {
+                    if let fetched = try? await CloudKitManager.shared.fetchUserBonds() {
                         bonds = fetched
                     }
                 }
@@ -243,8 +242,9 @@ struct BondCard: View {
                             .resizable()
                             .scaledToFill()
                     } else {
-                        Rectangle()
-                            .fill(Color(red: 0.85, green: 0.85, blue: 0.87))
+                        Image("bg_BondFoto")
+                            .resizable()
+                            .scaledToFill()
                     }
                 }
                 .frame(maxWidth: .infinity)
