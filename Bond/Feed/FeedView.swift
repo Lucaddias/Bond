@@ -102,6 +102,7 @@ struct FeedView: View {
                         .padding(.top, 8)
                         .padding(.bottom, geo.safeAreaInsets.bottom + 100)
                     }
+                    .scrollDismissesKeyboard(.interactively)
                     .refreshable { await loadPosts() }
                 }
 

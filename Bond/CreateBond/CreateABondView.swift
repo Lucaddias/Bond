@@ -50,7 +50,7 @@ struct CreateABondView: View {
                 Color.white.ignoresSafeArea()
 
                 // ── Imagem decorativa do fundo ──
-                let bgName = step == 1 ? "bg_Config3" : step == 2 ? "bg_Config2" : "bg_Config1"
+                let bgName = step == 4 ? "bg_Share" : step == 1 ? "bg_Config3" : step == 2 ? "bg_Config2" : "bg_Config1"
                 Image(bgName)
                     .resizable()
                     .scaledToFill()
@@ -62,38 +62,40 @@ struct CreateABondView: View {
                 // ── Layout principal ─────────────────────────────
                 VStack(spacing: 0) {
 
-                    // ── Header: botão voltar + título ──────────────
-                    ZStack {
-                        HStack(alignment: .center, spacing: 8) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.57))
-                            Text("Settings")
-                                .font(.app(.balooBold, size: 20))
-                                .foregroundColor(.black)
-                        }
-
-                        HStack {
-                            Button {
-                                if step > 1 {
-                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step -= 1 }
-                                } else {
-                                    dismiss()
-                                }
-                            } label: {
-                                ZStack {
-                                    Image("Botao_voltar")
-                                    Image(systemName: "arrow.left")
-                                        .font(.system(size: 18, weight: .bold))
-                                        .foregroundColor(.white)
-                                }
+                    // ── Header: oculto na tela de share ────────────
+                    if !isShareStep {
+                        ZStack {
+                            HStack(alignment: .center, spacing: 8) {
+                                Image(systemName: "gearshape.fill")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundColor(Color(red: 0.55, green: 0.55, blue: 0.57))
+                                Text("Settings")
+                                    .font(.app(.balooBold, size: 20))
+                                    .foregroundColor(.black)
                             }
-                            .buttonStyle(.plain)
-                            Spacer()
+
+                            HStack {
+                                Button {
+                                    if step > 1 {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step -= 1 }
+                                    } else {
+                                        dismiss()
+                                    }
+                                } label: {
+                                    ZStack {
+                                        Image("Botao_voltar")
+                                        Image(systemName: "arrow.left")
+                                            .font(.system(size: 18, weight: .bold))
+                                            .foregroundColor(.white)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                Spacer()
+                            }
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 20)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.top, 20)
 
                     // ── Progress bar (só para steps 1-3) ───────────
                     if !isShareStep {
@@ -130,53 +132,63 @@ struct CreateABondView: View {
                     }
 
                     // ── Conteúdo da etapa ───────────────────────────
-                    Group {
-                        if step == 1 {
-                            StepOneView(
-                                bondTitle: $bondTitle,
-                                durationIndex: $durationIndex,
-                                showEmojiPicker: $showEmojiPicker,
-                                durationOptions: durationOptions,
-                                durationDays: durationDays
-                            )
-                        } else if step == 2 {
-                            StepTwoView(
-                                bondDescription: $bondDescription,
-                                reward: $reward
-                            )
-                        } else if step == 3 {
-                            StepThreeView(
-                                challenges: $challenges,
-                                newChallenge: $newChallenge,
-                                showAddChallenge: $showAddChallenge
-                            )
-                        } else {
-                            StepShareView(
-                                bondName: bondTitle.trimmingCharacters(in: .whitespaces),
-                                inviteCode: generatedCode,
-                                maxParticipants: userTier.maxParticipantsAsCreator,
-                                copied: $codeCopied
-                            )
+                    if isShareStep {
+                        // Step 4: tela fixa, sem scroll
+                        StepShareView(
+                            bondName: bondTitle.trimmingCharacters(in: .whitespaces),
+                            inviteCode: generatedCode,
+                            maxParticipants: userTier.maxParticipantsAsCreator,
+                            copied: $codeCopied
+                        )
+                        .padding(.horizontal, 24)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        // Steps 1-3: scroll + dismiss por gesto
+                        ScrollView(showsIndicators: false) {
+                            Group {
+                                if step == 1 {
+                                    StepOneView(
+                                        bondTitle: $bondTitle,
+                                        durationIndex: $durationIndex,
+                                        showEmojiPicker: $showEmojiPicker,
+                                        durationOptions: durationOptions,
+                                        durationDays: durationDays
+                                    )
+                                } else if step == 2 {
+                                    StepTwoView(
+                                        bondDescription: $bondDescription,
+                                        reward: $reward
+                                    )
+                                } else {
+                                    StepThreeView(
+                                        challenges: $challenges,
+                                        newChallenge: $newChallenge,
+                                        showAddChallenge: $showAddChallenge
+                                    )
+                                }
+                            }
+                            .padding(.horizontal, 24)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .padding(.bottom, 16)
                         }
+                        .scrollDismissesKeyboard(.interactively)
                     }
-                    .padding(.horizontal, 24)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-
-                    Spacer()
 
                     // ── Botão continuar/finalizar ───────────────────
                     Button {
                         handleContinue()
                     } label: {
                         ZStack {
-                            Image("Botao_continuar")
+                            Image(isShareStep ? "Botao_roxo" : "Botao_continuar")
+                                .resizable()
+                                .scaledToFit()
                                 .frame(maxWidth: .infinity)
-                            Text(isSavingBond ? "Saving..." : isShareStep ? "Done" : isLastContentStep ? "Let's go!" : "Continue")
-                                .font(.app(.balooBold, size: 20))
+                            Text(isSavingBond ? "Saving..." : isShareStep ? "Next" : isLastContentStep ? "Let's go!" : "Continue")
+                                .font(.app(.balooBold, size: 24))
                                 .foregroundColor(.white)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.bottom, 40)
+                        .frame(height: 76)
                     }
                     .buttonStyle(.plain)
                     .opacity(continueDisabled ? 0.4 : 1)
@@ -189,6 +201,17 @@ struct CreateABondView: View {
         }
         .ignoresSafeArea()
         .environment(\.colorScheme, .light)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder),
+                        to: nil, from: nil, for: nil
+                    )
+                }
+            }
+        }
         .alert("Sync Error", isPresented: Binding(
             get: { saveErrorMessage != nil },
             set: { if !$0 { saveErrorMessage = nil } }
@@ -308,12 +331,13 @@ struct StepOneView: View {
                                     Text(emoji)
                                         .font(.system(size: 28))
                                         .padding(6)
-                                        .background(Color(red: 0.95, green: 0.95, blue: 0.97))
+                                        .background(.white)
                                         .clipShape(RoundedRectangle(cornerRadius: 10))
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
+                        .padding(.top, 12)
                         .padding(.horizontal, 4)
                         
                     }
@@ -372,6 +396,7 @@ struct StepTwoView: View {
                     .font(.app(.balooBold, size: 20))
                     .foregroundColor(.black)
                     .padding(.leading, 40)
+                    .padding(.bottom, -17)
 
                 ZStack(alignment: .topLeading) {
                     Image("AboutSection")
@@ -515,76 +540,65 @@ struct StepShareView: View {
     let maxParticipants: Int
     @Binding var copied: Bool
 
+    @State private var showShareSheet = false
+
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        VStack(spacing: 20) {
 
-            // QR Code
-            if let qrImage = generateQRCode(from: inviteCode) {
-                Image(uiImage: qrImage)
-                    .interpolation(.none)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 180, height: 180)
-                    .padding(16)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .shadow(color: .black.opacity(0.10), radius: 12, x: 0, y: 4)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
+            // ── Título ──────────────────────────────────────────
+            Text("Share code!")
+                .font(.app(.porkysHeavy, size: 52))
+                .foregroundColor(.black)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .kerning(1.5)
+                
 
-            // Código em texto
-            VStack(spacing: 6) {
-                Text("INVITE CODE")
-                    .font(.app(.balooMedium, size: 11))
-                    .foregroundColor(.black.opacity(0.4))
-                    .kerning(2)
+            // ── Conteúdo sobreposto à caixa do bg_Share ──────────
+            VStack(spacing: 16) {
+                // Label
+                Text("Team code")
+                    .font(.app(.balooBold, size: 32))
+                    .foregroundColor(.black.opacity(0.35))
+                    .padding(.top, 36)
 
+                // QR Code
+                if let qrImage = generateQRCode(from: inviteCode) {
+                    Image(uiImage: qrImage)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 220, height: 220)
+                }
+
+                // Código
                 Text(inviteCode)
-                    .font(.app(.balooBold, size: 44))
-                    .kerning(8)
-                    .foregroundColor(.black)
+                    .font(.app(.balooBold, size: 42))
+                    .kerning(6)
+                    .foregroundColor(.black.opacity(0.45))
 
-                HStack(spacing: 4) {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(.black.opacity(0.35))
-                    Text("Up to \(maxParticipants) members")
-                        .font(.app(.balooMedium, size: 13))
-                        .foregroundColor(.black.opacity(0.35))
+                // ── Botão compartilhar — trailing, dentro da caixa do bg ──
+                HStack {
+                    Spacer()
+                    Button { showShareSheet = true } label: {
+                        Image("Botao_compartilhar")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 60, height: 60)
+                    }
+                    .buttonStyle(.plain)
                 }
+                .padding(.trailing, 4)
+                .padding(.bottom, 12)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.vertical, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(red: 0.97, green: 0.97, blue: 0.99))
-            )
+            .padding(.vertical, 28)
+            .padding(.horizontal, 24)
+            .frame(maxWidth: .infinity)
 
-            // Botão copiar
-            Button {
-                UIPasteboard.general.string = inviteCode
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { copied = true }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    withAnimation { copied = false }
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text(copied ? "Copied!" : "Copy Code")
-                        .font(.app(.balooBold, size: 16))
-                }
-                .foregroundColor(Color(red: 0.42, green: 0.35, blue: 0.80))
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color(red: 0.42, green: 0.35, blue: 0.80), lineWidth: 1.5)
-                )
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, alignment: .center)
+            Spacer()
+        }
+        .sheet(isPresented: $showShareSheet) {
+            ShareSheet(items: ["Join my Bond \"\(bondName)\"! Use the code: \(inviteCode)"])
+                .presentationDetents([.medium])
         }
     }
 
@@ -598,6 +612,19 @@ struct StepShareView: View {
         guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
         return UIImage(cgImage: cgImage)
     }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MARK: - Share Sheet (UIActivityViewController)
+// ─────────────────────────────────────────────────────────────────
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // ─────────────────────────────────────────────────────────────────

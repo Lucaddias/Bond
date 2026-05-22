@@ -128,23 +128,30 @@ struct BondInfoView: View {
                         }
 
                         // ── Nome do Bond + botão Share ───────────
-                        Text(bond.name)
-                            .font(.app(.balooBold, size: 28))
-                            .foregroundColor(.black)
-                            .multilineTextAlignment(.center)
-                            
-                            .overlay(alignment: .trailing) {
+                        // ZStack: nome sempre centralizado na largura total;
+                        // botão de compartilhar fixo à esquerda, antes do nome.
+                        ZStack {
+                            Text(bond.name)
+                                .font(.app(.balooBold, size: 28))
+                                .foregroundColor(.black)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity, alignment: .center)
+
+                            HStack {
                                 Button {
                                     showShare = true
                                 } label: {
-                                    Image("Botao_Compartilhar")
+                                    Image("Botao_compartilhar")
                                         .resizable()
                                         .scaledToFit()
                                         .frame(width: 44, height: 44)
                                 }
                                 .buttonStyle(.plain)
-                                .padding(.trailing, 24)
+                                .padding(.leading, 24)
+
+                                Spacer()
                             }
+                        }
 
                         // ── Progress / Time ──────────────────────
                         VStack(alignment: .leading, spacing: 8) {
