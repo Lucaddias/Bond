@@ -98,6 +98,9 @@ struct ProfileView: View {
                         // ── Campo de nome ──
                         ZStack {
                             Image("Botao_branco")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity)
 
                             TextField("Name", text: $editedName)
                                 .font(.app(.balooMedium, size: 28))
@@ -112,15 +115,17 @@ struct ProfileView: View {
                         .frame(height: 80)
 
                         // ── About Me ──
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 10) {
                             Text("About me")
                                 .font(.app(.porkysRegular, size: 24))
                                 .foregroundColor(.black)
-                                .padding(.leading, 45)
+                                .padding(.leading, 20)
                                 .kerning(1)
 
                             ZStack(alignment: .topLeading) {
                                 Image("AboutSection")
+                                    .resizable()
+                                    .scaledToFit()
                                     .frame(maxWidth: .infinity)
 
                                 if aboutMe.isEmpty {

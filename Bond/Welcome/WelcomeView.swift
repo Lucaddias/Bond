@@ -143,13 +143,21 @@ struct WelcomeView: View {
                 .frame(height: h)
 
                 // ── 4. Mão por cima de tudo ──
+                // ─── Ajuste de posição por dispositivo ───────────────
+                // iPhone 17 Pro Max: largura > 420pt
+                // iPhone 17 Pro    : largura ≤ 420pt
+                let isProMax = w > 420
+                let handOffsetX: CGFloat = isProMax ? -90  : -70   // Pro Max : Pro
+                let handOffsetY: CGFloat = isProMax ? 390  : 340   // Pro Max : Pro
+                // ─────────────────────────────────────────────────────
+
                 Image("HandView")
                     .resizable()
                     .scaledToFit()
                     .frame(width: w * 1.13)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.trailing, -w * 0.04)
-                    .offset(x: -70, y: 340)
+                    .offset(x: handOffsetX, y: handOffsetY)
             }
             .frame(width: w, height: h)
             .offset(y: -keyboardHeight * 0.45)
