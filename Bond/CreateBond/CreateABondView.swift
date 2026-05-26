@@ -4,6 +4,12 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
 
+enum FloatField: Equatable {
+    case bondTitle
+    case description
+    case reward
+}
+
 struct CreateABondView: View {
 
     @Environment(\.dismiss) private var dismiss
@@ -32,6 +38,9 @@ struct CreateABondView: View {
     @State private var codeCopied: Bool = false
     @State private var isSavingBond: Bool = false
     @State private var saveErrorMessage: String? = nil
+    @State private var keyboardHeight: CGFloat = 0
+    @State private var floatField: FloatField? = nil
+    @FocusState private var floatFocused: Bool
 
     let durationOptions = [7, 15, 30, 60, 90]
     var durationDays: Int { durationOptions[Int(durationIndex)] }
@@ -152,12 +161,14 @@ struct CreateABondView: View {
                                         durationIndex: $durationIndex,
                                         showEmojiPicker: $showEmojiPicker,
                                         durationOptions: durationOptions,
-                                        durationDays: durationDays
+                                        durationDays: durationDays,
+                                        floatField: $floatField
                                     )
                                 } else if step == 2 {
                                     StepTwoView(
                                         bondDescription: $bondDescription,
-                                        reward: $reward
+                                        reward: $reward,
+                                        floatField: $floatField
                                     )
                                 } else {
                                     StepThreeView(
@@ -169,7 +180,7 @@ struct CreateABondView: View {
                             }
                             .padding(.horizontal, 24)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
-                            .padding(.bottom, 16)
+                            .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 16 : 16)
                         }
                         .scrollDismissesKeyboard(.interactively)
                     }
@@ -197,10 +208,41 @@ struct CreateABondView: View {
                     .padding(.bottom, geo.safeAreaInsets.bottom + 24)
                 }
                 .padding(.top, 50)
+
+                // ── Dark overlay (covers all content, below floating card) ──
+                Color.black
+                    .opacity(floatField != nil ? 0.75 : 0)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(floatField != nil)
+                    .onTapGesture { floatField = nil }
+                    .animation(.easeInOut(duration: 0.2), value: floatField != nil)
+
+                // ── Floating input overlay (on top of everything) ──────────
+                if let field = floatField {
+                    floatingInputCard(field: field, geo: geo)
+                        .offset(y: -keyboardHeight / 2)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: keyboardHeight)
+                }
             }
         }
         .ignoresSafeArea()
         .environment(\.colorScheme, .light)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { n in
+            if let frame = n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                withAnimation(.easeInOut(duration: 0.25)) { keyboardHeight = frame.height }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(.easeInOut(duration: 0.25)) { keyboardHeight = 0 }
+        }
+        .onChange(of: floatField) { _, newVal in
+            if newVal != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { floatFocused = true }
+            } else {
+                floatFocused = false
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+        }
         .alert("Sync Error", isPresented: Binding(
             get: { saveErrorMessage != nil },
             set: { if !$0 { saveErrorMessage = nil } }
@@ -246,6 +288,66 @@ struct CreateABondView: View {
             }
         } else {
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { step += 1 }
+        }
+    }
+
+    // ── Floating input card ──────────────────────────────────────
+    @ViewBuilder
+    private func floatingInputCard(field: FloatField, geo: GeometryProxy) -> some View {
+        if field == .description {
+            ZStack {
+                Image("Botao_branco")
+                    .resizable()
+                    .scaledToFill()
+                TextField("Describe your Bond...", text: $bondDescription)
+                    .focused($floatFocused)
+                    .font(.app(.balooMedium, size: 16))
+                    .foregroundColor(.black.opacity(0.6))
+                    .autocorrectionDisabled()
+                    .multilineTextAlignment(.center)
+                    .submitLabel(.done)
+                    .onSubmit { floatField = nil }
+                    .padding(.horizontal, 20)
+                    .padding(.leading, 10)
+            }
+            .frame(height: 56)
+            .padding(.horizontal, 24)
+        } else if field == .reward {
+            ZStack {
+                Image("Botao_branco")
+                    .resizable()
+                    .scaledToFill()
+                TextField("What's the prize?", text: $reward)
+                    .focused($floatFocused)
+                    .font(.app(.balooMedium, size: 16))
+                    .foregroundColor(.black.opacity(0.6))
+                    .autocorrectionDisabled()
+                    .multilineTextAlignment(.center)
+                    .submitLabel(.done)
+                    .onSubmit { floatField = nil }
+                    .padding(.horizontal, 20)
+                    .padding(.leading, 10)
+            }
+            .frame(height: 56)
+            .padding(.horizontal, 24)
+        } else {
+            ZStack {
+                Image("Botao_branco")
+                    .resizable()
+                    .scaledToFill()
+                    .padding(.bottom, 20)
+                TextField("Bond name:", text: $bondTitle)
+                    .focused($floatFocused)
+                    .font(.app(.balooMedium, size: 18))
+                    .foregroundColor(.black.opacity(0.6))
+                    .autocorrectionDisabled()
+                    .multilineTextAlignment(.center)
+                    .submitLabel(.done)
+                    .onSubmit { floatField = nil }
+                    .padding(.leading, 10)
+            }
+            .frame(height: 56)
+            .padding(.horizontal, 24)
         }
     }
 

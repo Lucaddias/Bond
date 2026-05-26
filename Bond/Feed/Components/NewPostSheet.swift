@@ -25,19 +25,28 @@ struct NewPostSheet: View {
 
         VStack(spacing: 0) {
 
-            // Handle bar
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color(red: 0.80, green: 0.80, blue: 0.82))
-                .frame(width: 40, height: 5)
-                .padding(.top, 10)
-                .padding(.bottom, 16)
+            // ── Header ──────────────────────────────────────────
+            ZStack {
+                Text("New Post")
+                    .font(.app(.balooBold, size: 22))
+                    .foregroundColor(.black)
 
-            Text("New Post")
-                .font(.app(.balooBold, size: 22))
-                .foregroundColor(.black)
-                .padding(.bottom, 0)
-                .padding(.top, 60)
-                .padding(.trailing, 210)
+                HStack {
+                    Button { dismiss() } label: {
+                        ZStack {
+                            Image("Botao_voltar")
+                            Image(systemName: "arrow.left")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 60)
+            .padding(.bottom, 16)
 
             // Thumbnail
             ZStack {

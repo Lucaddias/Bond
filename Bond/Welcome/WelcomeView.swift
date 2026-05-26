@@ -46,6 +46,13 @@ struct WelcomeView: View {
                     .frame(width: w, height: h)
                     .clipped()
 
+                // ── Dark overlay when keyboard is visible ──
+                Color.black
+                    .opacity(keyboardHeight > 0 ? 0.5 : 0)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .animation(.easeInOut(duration: 0.25), value: keyboardHeight)
+
                 // ── 2. Título + Botões (sobem juntos com o teclado) ──
                 VStack(spacing: 0) {
 

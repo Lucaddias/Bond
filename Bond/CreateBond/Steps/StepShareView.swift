@@ -26,7 +26,7 @@ struct StepShareView: View {
             let teamCodeSize:  CGFloat = compact ? 35  : 40
             let codeSize:      CGFloat = compact ? 45  : 42
             let topPad:        CGFloat = compact ? 55  : 50
-            let vSpacing:      CGFloat = compact ? 10   : 20
+            let vSpacing:      CGFloat = compact ? 5   : 20
             let innerSpacing:  CGFloat = compact ? 10   : 16
 
             VStack(spacing: vSpacing) {

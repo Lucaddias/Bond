@@ -9,6 +9,7 @@ import SwiftUI
 struct StepTwoView: View {
     @Binding var bondDescription: String
     @Binding var reward: String
+    @Binding var floatField: FloatField?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -26,7 +27,6 @@ struct StepTwoView: View {
                         .resizable()
                         .scaledToFill()
 
-
                     if bondDescription.isEmpty {
                         Text("Describe your Bond...")
                             .font(.app(.balooMedium, size: 15))
@@ -35,19 +35,21 @@ struct StepTwoView: View {
                             .padding(.top, 16)
                             .padding(.leading, 10)
                             .allowsHitTesting(false)
+                    } else {
+                        Text(bondDescription)
+                            .font(.app(.balooMedium, size: 15))
+                            .foregroundColor(.black.opacity(0.7))
+                            .padding(.horizontal, 22)
+                            .padding(.top, 16)
+                            .padding(.leading, 10)
+                            .lineLimit(6)
                     }
-
-                    TextEditor(text: $bondDescription)
-                        .font(.app(.balooMedium, size: 15))
-                        .foregroundColor(.black.opacity(0.7))
-                        .scrollContentBackground(.hidden)
-                        .background(Color.clear)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        .frame(height: 130)
-                        .padding(.leading, 10)
                 }
+                .contentShape(Rectangle())
+                .onTapGesture { floatField = .description }
                 .clipped()
+                .opacity(floatField == .description ? 0 : 1)
+                .animation(.easeInOut(duration: 0.15), value: floatField == .description)
             }
 
             // ── Reward ──
@@ -63,15 +65,21 @@ struct StepTwoView: View {
                         .resizable()
                         .scaledToFill()
 
-
-                    TextField("What's the prize?", text: $reward)
-                        .font(.app(.balooMedium, size: 16))
-                        .foregroundColor(.black.opacity(0.6))
-                        .autocorrectionDisabled()
-                        .padding(.horizontal, 20)
-                        .padding(.leading, 10)
+                    HStack {
+                        Text(reward.isEmpty ? "What's the prize?" : reward)
+                            .font(.app(.balooMedium, size: 16))
+                            .foregroundColor(reward.isEmpty ? .black.opacity(0.3) : .black.opacity(0.7))
+                            .padding(.horizontal, 20)
+                            .padding(.leading, 10)
+                            .lineLimit(1)
+                        Spacer()
+                    }
                 }
                 .frame(height: 56)
+                .contentShape(Rectangle())
+                .onTapGesture { floatField = .reward }
+                .opacity(floatField == .reward ? 0 : 1)
+                .animation(.easeInOut(duration: 0.15), value: floatField == .reward)
             }
         }
     }

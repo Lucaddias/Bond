@@ -84,9 +84,15 @@ struct PostCard: View {
             // Download lazy do asset do CloudKit
             .task(id: post.id) {
                 if post.image == nil, let asset = post.imageAsset {
-                    post.image = try? CloudKitManager.shared.downloadImage(from: asset)
+                    post.image = try? CloudKitManager.shared.downloadImage(
+                        from: asset,
+                        cacheKey: post.recordID.map { "postImage:\($0.recordName)" }
+                    )
                 } else if post.videoURL == nil, let asset = post.videoAsset {
-                    post.videoURL = try? CloudKitManager.shared.downloadVideoURL(from: asset)
+                    post.videoURL = try? CloudKitManager.shared.downloadVideoURL(
+                        from: asset,
+                        cacheKey: post.recordID.map { "postVideo:\($0.recordName)" }
+                    )
                 }
             }
 

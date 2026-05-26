@@ -12,6 +12,7 @@ struct StepOneView: View {
     @Binding var showEmojiPicker: Bool
     let durationOptions: [Int]
     let durationDays: Int
+    @Binding var floatField: FloatField?
 
     private let emojis = ["🎨", "🎶", "🧶", "🏋️‍♂️", "📚", "❤️", "🚀", "🎯", "💪", "🏆", "⚡️", "🔥"]
 
@@ -33,11 +34,18 @@ struct StepOneView: View {
                         .padding(.bottom, 20)
 
                     HStack {
-                        TextField("Bond name:", text: $bondTitle)
-                            .font(.app(.balooMedium, size: 18))
-                            .foregroundColor(.black.opacity(0.6))
-                            .autocorrectionDisabled()
-                            .padding(.leading, 10)
+                        Button { floatField = .bondTitle } label: {
+                            HStack {
+                                Text(bondTitle.isEmpty ? "Bond name:" : bondTitle)
+                                    .font(.app(.balooMedium, size: 18))
+                                    .foregroundColor(bondTitle.isEmpty ? .black.opacity(0.3) : .black.opacity(0.7))
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 10)
 
                         Button {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -56,6 +64,8 @@ struct StepOneView: View {
                     }
                 }
                 .frame(height: 56)
+                .opacity(floatField == .bondTitle ? 0 : 1)
+                .animation(.easeInOut(duration: 0.15), value: floatField == .bondTitle)
 
                 // ── Emoji picker ──
                 if showEmojiPicker {

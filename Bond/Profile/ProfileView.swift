@@ -6,6 +6,11 @@ import UIKit
 import GameKit
 import PhotosUI
 
+enum ProfileFloatField: Equatable {
+    case name
+    case aboutMe
+}
+
 struct ProfileView: View {
 
     @Environment(\.dismiss) private var dismiss
@@ -23,6 +28,9 @@ struct ProfileView: View {
 
     // ── Alerts ───────────────────────────────────────────────────
     @State private var showUnsavedAlert = false
+    @State private var keyboardHeight: CGFloat = 0
+    @State private var profileFloatField: ProfileFloatField? = nil
+    @FocusState private var profileFloatFocused: Bool
 
     private var displayPhoto: UIImage? { customPhoto ?? playerPhoto }
 
@@ -47,8 +55,27 @@ struct ProfileView: View {
                     VStack(spacing: 0) {
 
                         // ── Botão voltar ─────────────────────────
-                        
-                       
+                        HStack {
+                            Button {
+                                if hasChanges {
+                                    showUnsavedAlert = true
+                                } else {
+                                    dismiss()
+                                }
+                            } label: {
+                                ZStack {
+                                    Image("Botao_voltar")
+                                    Image(systemName: "arrow.left")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                                .padding(.top, 40)
+                            }
+                            
+                            .buttonStyle(.plain)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 24)
 
                         // ── Título ───────────────────────────────
                         VStack(spacing: -20) {
@@ -64,7 +91,6 @@ struct ProfileView: View {
                                 .frame(maxWidth: .infinity, alignment: .center)
                                 .kerning(2)
                         }
-                        .padding(.top, 8)
                         .padding(.horizontal, 24)
 
                         Spacer().frame(height: 32)
@@ -119,17 +145,20 @@ struct ProfileView: View {
                                 .scaledToFit()
                                 .frame(maxWidth: .infinity)
 
-                            TextField("Name", text: $editedName)
-                                .font(.app(.balooMedium, size: 28))
-                                .foregroundColor(.black.opacity(0.5))
-                                .multilineTextAlignment(.center)
-                                .autocorrectionDisabled()
-                                .textFieldStyle(.plain)
-                                .frame(width: 260)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
+                            Button { profileFloatField = .name } label: {
+                                Text(editedName.isEmpty ? "Name" : editedName)
+                                    .font(.app(.balooMedium, size: 28))
+                                    .foregroundColor(.black.opacity(0.5))
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                    .frame(width: 260)
+                            }
+                            .buttonStyle(.plain)
                         }
                         .frame(height: 80)
+                        .opacity(profileFloatField == .name ? 0 : 1)
+                        .animation(.easeInOut(duration: 0.15), value: profileFloatField == .name)
 
                         // ── About Me ─────────────────────────────
                         VStack(alignment: .leading, spacing: 10) {
@@ -152,20 +181,22 @@ struct ProfileView: View {
                                         .padding(.horizontal, 24)
                                         .padding(.top, 16)
                                         .allowsHitTesting(false)
+                                } else {
+                                    Text(aboutMe)
+                                        .font(.app(.balooMedium, size: 16))
+                                        .foregroundColor(.black.opacity(0.7))
+                                        .padding(.horizontal, 24)
+                                        .padding(.top, 16)
+                                        .lineLimit(8)
                                 }
-
-                                TextEditor(text: $aboutMe)
-                                    .font(.app(.balooMedium, size: 16))
-                                    .foregroundColor(.black.opacity(0.7))
-                                    .scrollContentBackground(.hidden)
-                                    .background(Color.clear)
-                                    .padding(.horizontal, 12)
-                                    .padding(.top, 8)
-                                    .frame(height: 140)
                             }
+                            .contentShape(Rectangle())
+                            .onTapGesture { profileFloatField = .aboutMe }
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 30)
+                        .opacity(profileFloatField == .aboutMe ? 0 : 1)
+                        .animation(.easeInOut(duration: 0.15), value: profileFloatField == .aboutMe)
 
                         // ── Botão Save (aparece só quando tem mudanças) ──
                         if hasChanges {
@@ -188,12 +219,27 @@ struct ProfileView: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
 
-                        Spacer().frame(height: geo.safeAreaInsets.bottom + 48)
+                        Spacer().frame(height: geo.safeAreaInsets.bottom + 48 + keyboardHeight)
                     }
                     .frame(maxWidth: .infinity)
                     .animation(.spring(response: 0.35, dampingFraction: 0.8), value: hasChanges)
                 }
                 .scrollDismissesKeyboard(.interactively)
+
+                // ── Dark overlay (covers all content, below floating card) ──
+                Color.black
+                    .opacity(profileFloatField != nil ? 0.75 : 0)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(profileFloatField != nil)
+                    .onTapGesture { profileFloatField = nil }
+                    .animation(.easeInOut(duration: 0.2), value: profileFloatField != nil)
+
+                // ── Floating input overlay ────────────────────────
+                if let field = profileFloatField {
+                    profileFloatingInputCard(field: field, geo: geo)
+                        .offset(y: -keyboardHeight / 2)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: keyboardHeight)
+                }
             }
         }
         .ignoresSafeArea()
@@ -205,6 +251,74 @@ struct ProfileView: View {
             Text("There's unsaved changes. Do you wanna leave?")
         }
         .onAppear { loadProfile() }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { n in
+            if let frame = n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                withAnimation(.easeInOut(duration: 0.25)) { keyboardHeight = frame.height }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(.easeInOut(duration: 0.25)) { keyboardHeight = 0 }
+        }
+        .onChange(of: profileFloatField) { _, newVal in
+            if newVal != nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { profileFloatFocused = true }
+            } else {
+                profileFloatFocused = false
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+        }
+    }
+
+    // ── Floating input card ──────────────────────────────────────
+    @ViewBuilder
+    private func profileFloatingInputCard(field: ProfileFloatField, geo: GeometryProxy) -> some View {
+        if field == .aboutMe {
+            ZStack(alignment: .topLeading) {
+                Image("AboutSection")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                if aboutMe.isEmpty {
+                    Text("Tell ur friends a bit about you")
+                        .font(.app(.balooMedium, size: 16))
+                        .foregroundColor(.black.opacity(0.3))
+                        .padding(.horizontal, 24)
+                        .padding(.top, 16)
+                        .allowsHitTesting(false)
+                }
+                TextEditor(text: $aboutMe)
+                    .focused($profileFloatFocused)
+                    .font(.app(.balooMedium, size: 16))
+                    .foregroundColor(.black.opacity(0.7))
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .frame(height: 140)
+            }
+            .padding(.horizontal, 20)
+        } else {
+            ZStack {
+                Image("Botao_branco")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxWidth: .infinity)
+                TextField("Name", text: $editedName)
+                    .focused($profileFloatFocused)
+                    .font(.app(.balooMedium, size: 28))
+                    .foregroundColor(.black.opacity(0.5))
+                    .multilineTextAlignment(.center)
+                    .autocorrectionDisabled()
+                    .textFieldStyle(.plain)
+                    .submitLabel(.done)
+                    .onSubmit { profileFloatField = nil }
+                    .frame(width: 260)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .frame(height: 80)
+            .padding(.horizontal, 24)
+        }
     }
 
     // ── Save ─────────────────────────────────────────────────────

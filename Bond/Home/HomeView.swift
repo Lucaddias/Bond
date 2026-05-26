@@ -96,7 +96,7 @@ struct HomeView: View {
                 bonds.append(saved)
             }, existingCodes: existingCodes)
         }
-        .sheet(isPresented: $showProfile, onDismiss: {
+        .fullScreenCover(isPresented: $showProfile, onDismiss: {
             if let saved = ProfilePhotoStore.load() {
                 playerPhoto = saved
             }

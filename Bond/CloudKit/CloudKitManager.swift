@@ -36,6 +36,7 @@ final class CloudKitManager {
     private let container = CKContainer(identifier: "iCloud.com.seuteam.Bond")
     private var db: CKDatabase { container.publicCloudDatabase }
     private let localPlayerIDKey = "localPlayerID"
+    private let imageMemoryCache = NSCache<NSString, UIImage>()
 
     private init() {}
 
@@ -159,7 +160,7 @@ final class CloudKitManager {
 
         try await createMembership(bondRecordID: bondRecord.recordID)
 
-        var joinedBond = try bondFromRecord(bondRecord)
+        var joinedBond = try bondFromRecord(bondRecord, loadEmbeddedCover: false)
         if let latestCover = try? await fetchLatestBondCover(bondRecordID: bondRecord.recordID) {
             joinedBond.coverImage = latestCover
         }
@@ -183,7 +184,7 @@ final class CloudKitManager {
                 guard let membership  = try? result.get(),
                       let bondRef     = membership["bondRef"] as? CKRecord.Reference,
                       let bondRecord  = try? await db.record(for: bondRef.recordID),
-                      var bond        = try? bondFromRecord(bondRecord) else { continue }
+                      var bond        = try? bondFromRecord(bondRecord, loadEmbeddedCover: false) else { continue }
                 guard seenBondIDs.insert(bondRecord.recordID.recordName).inserted else { continue }
                 if let latestCover = try? await fetchLatestBondCover(bondRecordID: bondRecord.recordID) {
                     bond.coverImage = latestCover
@@ -360,21 +361,39 @@ final class CloudKitManager {
     // MARK: - Asset Helpers (público — usado pelo PostCard)
     // ─────────────────────────────────────────────────────────────
 
-    func downloadImage(from asset: CKAsset) throws -> UIImage {
-        guard let url  = asset.fileURL,
-              let data = try? Data(contentsOf: url),
+    func downloadImage(from asset: CKAsset, cacheKey: String? = nil) throws -> UIImage {
+        guard let url = asset.fileURL else {
+            throw CloudKitError.assetDownloadFailed
+        }
+
+        let resolvedCacheKey = cacheKey ?? "asset:\(url.path)"
+        if let cached = cachedImage(forKey: resolvedCacheKey) {
+            return cached
+        }
+
+        guard let data = try? Data(contentsOf: url),
               let img  = UIImage(data: data) else {
             throw CloudKitError.assetDownloadFailed
         }
+        storeImage(img, forKey: resolvedCacheKey)
         return img
     }
 
-    func downloadVideoURL(from asset: CKAsset) throws -> URL {
+    func downloadVideoURL(from asset: CKAsset, cacheKey: String? = nil) throws -> URL {
         guard let url = asset.fileURL else { throw CloudKitError.assetDownloadFailed }
-        let dst = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString + ".mov")
-        try FileManager.default.copyItem(at: url, to: dst)
-        return dst
+
+        let resolvedCacheKey = cacheKey ?? "videoAsset:\(url.path)"
+        let cachedURL = videoCacheURL(forKey: resolvedCacheKey)
+        if FileManager.default.fileExists(atPath: cachedURL.path) {
+            return cachedURL
+        }
+
+        try FileManager.default.createDirectory(at: videoCacheDirectory, withIntermediateDirectories: true)
+        if FileManager.default.fileExists(atPath: cachedURL.path) {
+            try? FileManager.default.removeItem(at: cachedURL)
+        }
+        try FileManager.default.copyItem(at: url, to: cachedURL)
+        return cachedURL
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -415,7 +434,7 @@ final class CloudKitManager {
               let asset = record["imageAsset"] as? CKAsset else {
             return nil
         }
-        return try downloadImage(from: asset)
+        return try downloadImage(from: asset, cacheKey: "bondCover:\(record.recordID.recordName)")
     }
 
     private func createMembership(bondRecordID: CKRecord.ID) async throws {
@@ -440,7 +459,7 @@ final class CloudKitManager {
     // MARK: - Record → Model mapping
     // ─────────────────────────────────────────────────────────────
 
-    private func bondFromRecord(_ record: CKRecord) throws -> BondModel {
+    private func bondFromRecord(_ record: CKRecord, loadEmbeddedCover: Bool = true) throws -> BondModel {
         var bond = BondModel(name: record["name"] as? String ?? "")
         bond.recordID        = record.recordID
         bond.inviteCode      = record["inviteCode"]      as? String ?? ""
@@ -452,8 +471,8 @@ final class CloudKitManager {
         bond.reward          = record["reward"]          as? String ?? ""
         bond.challenges      = record["challenges"]      as? [String] ?? []
         bond.bondDescription = record["bondDescription"] as? String ?? ""
-        if let asset = record["coverAsset"] as? CKAsset {
-            bond.coverImage = (try? downloadImage(from: asset)) ?? BondModel.defaultCoverImage
+        if loadEmbeddedCover, let asset = record["coverAsset"] as? CKAsset {
+            bond.coverImage = (try? downloadImage(from: asset, cacheKey: "bondEmbeddedCover:\(record.recordID.recordName)")) ?? BondModel.defaultCoverImage
         } else {
             bond.coverImage = BondModel.defaultCoverImage
         }
@@ -471,5 +490,54 @@ final class CloudKitManager {
         post.imageAsset    = record["imageAsset"] as? CKAsset
         post.videoAsset    = record["videoAsset"] as? CKAsset
         return post
+    }
+
+    private func cachedImage(forKey key: String) -> UIImage? {
+        let nsKey = key as NSString
+        if let cached = imageMemoryCache.object(forKey: nsKey) {
+            return cached
+        }
+
+        let url = imageCacheURL(forKey: key)
+        guard let image = UIImage(contentsOfFile: url.path) else { return nil }
+        imageMemoryCache.setObject(image, forKey: nsKey)
+        return image
+    }
+
+    private func storeImage(_ image: UIImage, forKey key: String) {
+        imageMemoryCache.setObject(image, forKey: key as NSString)
+        guard let data = image.jpegData(compressionQuality: 0.85) else { return }
+
+        let directory = imageCacheDirectory
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try? data.write(to: imageCacheURL(forKey: key), options: [.atomic])
+    }
+
+    private var imageCacheDirectory: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("BondImageCache", isDirectory: true)
+    }
+
+    private var videoCacheDirectory: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("BondVideoCache", isDirectory: true)
+    }
+
+    private func imageCacheURL(forKey key: String) -> URL {
+        let fileName = Data(key.utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "=", with: "")
+        return imageCacheDirectory.appendingPathComponent(fileName + ".jpg")
+    }
+
+    private func videoCacheURL(forKey key: String) -> URL {
+        let fileName = Data(key.utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "=", with: "")
+        return videoCacheDirectory.appendingPathComponent(fileName + ".mov")
     }
 }

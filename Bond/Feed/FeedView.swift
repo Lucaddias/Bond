@@ -151,7 +151,7 @@ struct FeedView: View {
             })
         }
         // ── Novo post (caption) ──────────────────────────────────
-        .sheet(isPresented: $showNewPost, onDismiss: clearPicked) {
+        .fullScreenCover(isPresented: $showNewPost, onDismiss: clearPicked) {
             NewPostSheet(
                 image: pickedImage,
                 videoURL: pickedVideoURL
@@ -171,13 +171,30 @@ struct FeedView: View {
             let posts = try await CloudKitManager.shared.fetchPosts(for: recordID)
             // Marca quais posts o usuário curtiu
             let likedIDs = try await CloudKitManager.shared.fetchLikedPostIDs()
-            bond.posts = posts.map { post in
+            var preparedPosts = posts.map { post in
                 var p = post
                 if let rid = p.recordID {
                     p.isLiked = likedIDs.contains(rid.recordName)
                 }
                 return p
             }
+
+            for index in preparedPosts.indices.prefix(3) {
+                guard let recordName = preparedPosts[index].recordID?.recordName else { continue }
+                if preparedPosts[index].image == nil, let asset = preparedPosts[index].imageAsset {
+                    preparedPosts[index].image = try? CloudKitManager.shared.downloadImage(
+                        from: asset,
+                        cacheKey: "postImage:\(recordName)"
+                    )
+                } else if preparedPosts[index].videoURL == nil, let asset = preparedPosts[index].videoAsset {
+                    preparedPosts[index].videoURL = try? CloudKitManager.shared.downloadVideoURL(
+                        from: asset,
+                        cacheKey: "postVideo:\(recordName)"
+                    )
+                }
+            }
+
+            bond.posts = preparedPosts
         } catch {
             // Falha silenciosa — mantém posts locais/cache
         }
