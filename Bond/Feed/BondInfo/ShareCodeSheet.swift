@@ -12,14 +12,22 @@ struct ShareCodeSheet: View {
     let maxParticipants: Int
     @Binding var copied: Bool
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
-        StepShareView(
-            bondName: bondName,
-            inviteCode: inviteCode,
-            maxParticipants: maxParticipants,
-            copied: $copied
-        )
-        .padding(.top, 24)
-        .padding(.horizontal, 24)
+        ZStack {
+            // Fundo adaptativo: branco no light mode, preto no dark mode
+            (colorScheme == .dark ? Color.black : Color.white)
+                .ignoresSafeArea()
+
+            StepShareView(
+                bondName: bondName,
+                inviteCode: inviteCode,
+                maxParticipants: maxParticipants,
+                copied: $copied
+            )
+            .padding(.top, 24)
+            .padding(.horizontal, 24)
+        }
     }
 }

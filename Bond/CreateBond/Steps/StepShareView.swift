@@ -34,7 +34,7 @@ struct StepShareView: View {
                 // ── Título ──────────────────────────────────────────
                 Text("Share code!")
                     .font(.app(.porkysHeavy, size: titleSize))
-                    .foregroundColor(.black)
+                    .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .kerning(2)
 
@@ -43,7 +43,7 @@ struct StepShareView: View {
                     // Label
                     Text("Team code")
                         .font(.app(.balooBold, size: teamCodeSize))
-                        .foregroundColor(.black.opacity(0.35))
+                        .foregroundStyle(.primary.opacity(0.45))
                         .padding(.top, topPad)
 
                     // QR Code
@@ -59,7 +59,7 @@ struct StepShareView: View {
                     Text(inviteCode)
                         .font(.app(.balooBold, size: codeSize))
                         .kerning(6)
-                        .foregroundColor(.black.opacity(0.45))
+                        .foregroundStyle(.primary.opacity(0.55))
 
                     // ── Botão compartilhar — trailing, dentro da caixa do bg ──
                     HStack {

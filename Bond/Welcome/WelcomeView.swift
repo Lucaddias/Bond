@@ -89,17 +89,6 @@ struct WelcomeView: View {
                                 .autocorrectionDisabled()
                                 .submitLabel(.join)
                                 .onSubmit { attemptJoin() }
-                                .toolbar {
-                                    ToolbarItemGroup(placement: .keyboard) {
-                                        Spacer()
-                                        Button("Done") {
-                                            UIApplication.shared.sendAction(
-                                                #selector(UIResponder.resignFirstResponder),
-                                                to: nil, from: nil, for: nil
-                                            )
-                                        }
-                                    }
-                                }
                                 .onChange(of: code) { _, new in
                                     joinError = nil
                                     let filtered = new.filter { $0.isLetter || $0.isNumber }

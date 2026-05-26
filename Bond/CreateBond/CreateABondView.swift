@@ -201,17 +201,6 @@ struct CreateABondView: View {
         }
         .ignoresSafeArea()
         .environment(\.colorScheme, .light)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") {
-                    UIApplication.shared.sendAction(
-                        #selector(UIResponder.resignFirstResponder),
-                        to: nil, from: nil, for: nil
-                    )
-                }
-            }
-        }
         .alert("Sync Error", isPresented: Binding(
             get: { saveErrorMessage != nil },
             set: { if !$0 { saveErrorMessage = nil } }

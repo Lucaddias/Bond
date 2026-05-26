@@ -32,4 +32,12 @@ enum ProfilePhotoStore {
     static func loadName() -> String? {
         UserDefaults.standard.string(forKey: "profile_name")
     }
+
+    static func saveAboutMe(_ text: String) {
+        UserDefaults.standard.set(text, forKey: "profile_about_me")
+    }
+
+    static func loadAboutMe() -> String {
+        UserDefaults.standard.string(forKey: "profile_about_me") ?? ""
+    }
 }

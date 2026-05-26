@@ -8,20 +8,33 @@ import PhotosUI
 
 struct ProfileView: View {
 
-    @State private var playerName: String = ""
+    @Environment(\.dismiss) private var dismiss
+
+    // ── Campos editáveis ─────────────────────────────────────────
     @State private var playerPhoto: UIImage? = nil
-    @State private var editedName: String = ""
-    @State private var aboutMe: String = ""
+    @State private var editedName: String   = ""
+    @State private var aboutMe: String      = ""
     @State private var photoPickerItem: PhotosPickerItem? = nil
     @State private var customPhoto: UIImage? = nil
 
+    // ── Estado salvo (para detectar mudanças) ────────────────────
+    @State private var savedName: String    = ""
+    @State private var savedAboutMe: String = ""
+
+    // ── Alerts ───────────────────────────────────────────────────
+    @State private var showUnsavedAlert = false
+
     private var displayPhoto: UIImage? { customPhoto ?? playerPhoto }
+
+    private var hasChanges: Bool {
+        editedName != savedName || aboutMe != savedAboutMe
+    }
 
     var body: some View {
         GeometryReader { geo in
             ZStack {
 
-                // ── Background ──
+                // ── Background ──────────────────────────────────
                 Image("bg_Profile")
                     .resizable()
                     .scaledToFill()
@@ -29,11 +42,15 @@ struct ProfileView: View {
                     .clipped()
                     .ignoresSafeArea()
 
-                // ── Conteúdo rolável ──
+                // ── Conteúdo rolável ─────────────────────────────
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
 
-                        // ── Título ──
+                        // ── Botão voltar ─────────────────────────
+                        
+                       
+
+                        // ── Título ───────────────────────────────
                         VStack(spacing: -20) {
                             Text("Organize")
                                 .font(.app(.porkysRegular, size: 60))
@@ -47,12 +64,12 @@ struct ProfileView: View {
                                 .frame(maxWidth: .infinity, alignment: .center)
                                 .kerning(2)
                         }
-                        .padding(.top, geo.safeAreaInsets.top + 32)
+                        .padding(.top, 8)
                         .padding(.horizontal, 24)
 
-                        Spacer().frame(height: 40)
+                        Spacer().frame(height: 32)
 
-                        // ── Foto + botão troca ──
+                        // ── Foto + botão troca ───────────────────
                         ZStack(alignment: .bottomTrailing) {
                             Group {
                                 if let img = displayPhoto {
@@ -95,7 +112,7 @@ struct ProfileView: View {
 
                         Spacer().frame(height: 32)
 
-                        // ── Campo de nome ──
+                        // ── Campo de nome ────────────────────────
                         ZStack {
                             Image("Botao_branco")
                                 .resizable()
@@ -114,7 +131,7 @@ struct ProfileView: View {
                         }
                         .frame(height: 80)
 
-                        // ── About Me ──
+                        // ── About Me ─────────────────────────────
                         VStack(alignment: .leading, spacing: 10) {
                             Text("About me")
                                 .font(.app(.porkysRegular, size: 24))
@@ -150,52 +167,94 @@ struct ProfileView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 30)
 
+                        // ── Botão Save (aparece só quando tem mudanças) ──
+                        if hasChanges {
+                            Button { saveProfile() } label: {
+                                ZStack {
+                                    Image("Botao_roxo")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(maxWidth: .infinity)
+                                    Text("Save")
+                                        .font(.app(.balooBold, size: 24))
+                                        .foregroundColor(.white)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 76)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 24)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+
                         Spacer().frame(height: geo.safeAreaInsets.bottom + 48)
                     }
                     .frame(maxWidth: .infinity)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: hasChanges)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
         }
         .ignoresSafeArea()
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") {
-                    UIApplication.shared.sendAction(
-                        #selector(UIResponder.resignFirstResponder),
-                        to: nil, from: nil, for: nil
-                    )
-                }
-            }
+        .interactiveDismissDisabled(hasChanges)
+        .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
+            Button("Leave", role: .destructive) { dismiss() }
+            Button("Stay", role: .cancel) {}
+        } message: {
+            Text("There's unsaved changes. Do you wanna leave?")
         }
-        .onAppear { loadGameCenterPlayer() }
-        .onDisappear {
-            if !editedName.isEmpty {
-                ProfilePhotoStore.saveName(editedName)
-            }
-        }
+        .onAppear { loadProfile() }
     }
 
-    private func loadGameCenterPlayer() {
+    // ── Save ─────────────────────────────────────────────────────
+    private func saveProfile() {
+        let nameToSave = editedName.trimmingCharacters(in: .whitespaces)
+        if !nameToSave.isEmpty {
+            ProfilePhotoStore.saveName(nameToSave)
+            savedName = nameToSave
+            editedName = nameToSave
+        }
+        ProfilePhotoStore.saveAboutMe(aboutMe)
+        savedAboutMe = aboutMe
+
+        // Haptic de confirmação
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
+    }
+
+    // ── Load ─────────────────────────────────────────────────────
+    private func loadProfile() {
+        // Foto
         if let saved = ProfilePhotoStore.load() {
             customPhoto = saved
         }
+        // About me
+        let storedAbout = ProfilePhotoStore.loadAboutMe()
+        aboutMe     = storedAbout
+        savedAboutMe = storedAbout
+
+        // Nome: manual > Game Center
         let player = GKLocalPlayer.local
-        if player.isAuthenticated {
-            let name = player.displayName
-            playerName = name
-            editedName = name
-            ProfilePhotoStore.saveName(name)
-            if customPhoto == nil {
-                player.loadPhoto(for: .normal) { image, _ in
-                    if let image {
-                        DispatchQueue.main.async { playerPhoto = image }
-                    }
+        if let manualName = ProfilePhotoStore.loadName(), !manualName.isEmpty {
+            editedName = manualName
+        } else if player.isAuthenticated {
+            editedName = player.displayName
+            ProfilePhotoStore.saveName(player.displayName)
+        }
+        savedName = editedName
+
+        // Foto do Game Center como fallback
+        if player.isAuthenticated, customPhoto == nil {
+            player.loadPhoto(for: .normal) { image, _ in
+                if let image {
+                    DispatchQueue.main.async { playerPhoto = image }
                 }
             }
-        } else if let saved = ProfilePhotoStore.loadName(), !saved.isEmpty {
-            editedName = saved
         }
     }
 }
