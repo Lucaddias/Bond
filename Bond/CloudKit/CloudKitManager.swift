@@ -33,7 +33,7 @@ final class CloudKitManager {
     var currentPlayerName = "Player"
 
     // ── Infra ────────────────────────────────────────────────────
-    private let container = CKContainer(identifier: "iCloud.com.appbond.canario.luca")
+    private let container = CKContainer(identifier: "iCloud.com.canario.Bond")
     private var db: CKDatabase { container.publicCloudDatabase }
     private let localPlayerIDKey = "localPlayerID"
     private let imageMemoryCache = NSCache<NSString, UIImage>()

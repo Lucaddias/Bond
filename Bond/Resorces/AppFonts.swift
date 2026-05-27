@@ -49,9 +49,9 @@ enum FontRegistrar {
     /// Prints all registered fonts to help you find the correct PostScript names.
     static func debugPrintRegisteredFonts() {
         for family in UIFont.familyNames.sorted() {
-            print("[FontRegistrar] Family: \(family)")
+//            print("[FontRegistrar] Family: \(family)")
             for name in UIFont.fontNames(forFamilyName: family).sorted() {
-                print("    - \(name)")
+//                print("    - \(name)")
             }
         }
     }
