@@ -409,7 +409,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Bond/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Bond;
+				INFOPLIST_KEY_CFBundleDisplayName = "Bond: Pratique com sua tribo";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Bond precisa acessar sua câmera para tirar fotos e gravar vídeos das suas conquistas.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bond precisa acessar o microfone para gravar vídeos com áudio.";
@@ -453,7 +453,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Bond/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Bond;
+				INFOPLIST_KEY_CFBundleDisplayName = "Bond: Pratique com sua tribo";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Bond precisa acessar sua câmera para tirar fotos e gravar vídeos das suas conquistas.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Bond precisa acessar o microfone para gravar vídeos com áudio.";
