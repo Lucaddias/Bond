@@ -8,7 +8,7 @@
 	<true/>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
-		<string>iCloud.br.com-puc-rio.ecoa.bond</string>
+		<string>iCloud.com.canario.Bond</string>
 	</array>
 	<key>com.apple.developer.icloud-services</key>
 	<array>

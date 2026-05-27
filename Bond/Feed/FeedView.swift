@@ -171,7 +171,7 @@ struct FeedView: View {
             let posts = try await CloudKitManager.shared.fetchPosts(for: recordID)
             // Marca quais posts o usuário curtiu
             let likedIDs = try await CloudKitManager.shared.fetchLikedPostIDs()
-            var preparedPosts = posts.map { post in
+            let preparedPosts = posts.map { post in
                 var p = post
                 if let rid = p.recordID {
                     p.isLiked = likedIDs.contains(rid.recordName)
