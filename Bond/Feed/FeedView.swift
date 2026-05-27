@@ -179,21 +179,6 @@ struct FeedView: View {
                 return p
             }
 
-            for index in preparedPosts.indices.prefix(3) {
-                guard let recordName = preparedPosts[index].recordID?.recordName else { continue }
-                if preparedPosts[index].image == nil, let asset = preparedPosts[index].imageAsset {
-                    preparedPosts[index].image = try? CloudKitManager.shared.downloadImage(
-                        from: asset,
-                        cacheKey: "postImage:\(recordName)"
-                    )
-                } else if preparedPosts[index].videoURL == nil, let asset = preparedPosts[index].videoAsset {
-                    preparedPosts[index].videoURL = try? CloudKitManager.shared.downloadVideoURL(
-                        from: asset,
-                        cacheKey: "postVideo:\(recordName)"
-                    )
-                }
-            }
-
             bond.posts = preparedPosts
         } catch {
             // Falha silenciosa — mantém posts locais/cache

@@ -10,6 +10,7 @@ struct BondInfoView: View {
 
     // ── Cover photo ──────────────────────────────────────────────
     @State private var photoPickerItem: PhotosPickerItem? = nil
+    @State private var showPhotoLibrary = false
     @State private var showCameraForCover = false
 
     // ── Share sheet ──────────────────────────────────────────────
@@ -113,7 +114,9 @@ struct BondInfoView: View {
                                 } label: {
                                     Label("Camera", systemImage: "camera")
                                 }
-                                PhotosPicker(selection: $photoPickerItem, matching: .images) {
+                                Button {
+                                    showPhotoLibrary = true
+                                } label: {
                                     Label("Library", systemImage: "photo.on.rectangle")
                                 }
                             } label: {
@@ -283,6 +286,11 @@ struct BondInfoView: View {
             }
         }
         .ignoresSafeArea()
+        .photosPicker(
+            isPresented: $showPhotoLibrary,
+            selection: $photoPickerItem,
+            matching: .images
+        )
         // ── Trocar foto via galeria ──────────────────────────────
         .onChange(of: photoPickerItem) { _, newItem in
             Task {

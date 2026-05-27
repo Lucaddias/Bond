@@ -33,7 +33,7 @@ final class CloudKitManager {
     var currentPlayerName = "Player"
 
     // ── Infra ────────────────────────────────────────────────────
-    private let container = CKContainer(identifier: "iCloud.com.seuteam.Bond")
+    private let container = CKContainer(identifier: "iCloud.com.appbond.canario.luca")
     private var db: CKDatabase { container.publicCloudDatabase }
     private let localPlayerIDKey = "localPlayerID"
     private let imageMemoryCache = NSCache<NSString, UIImage>()
@@ -375,7 +375,7 @@ final class CloudKitManager {
               let img  = UIImage(data: data) else {
             throw CloudKitError.assetDownloadFailed
         }
-        storeImage(img, forKey: resolvedCacheKey)
+        storeImageData(data, image: img, forKey: resolvedCacheKey)
         return img
     }
 
@@ -504,9 +504,8 @@ final class CloudKitManager {
         return image
     }
 
-    private func storeImage(_ image: UIImage, forKey key: String) {
+    private func storeImageData(_ data: Data, image: UIImage, forKey key: String) {
         imageMemoryCache.setObject(image, forKey: key as NSString)
-        guard let data = image.jpegData(compressionQuality: 0.85) else { return }
 
         let directory = imageCacheDirectory
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
